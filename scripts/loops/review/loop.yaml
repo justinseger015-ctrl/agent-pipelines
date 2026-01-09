@@ -1,0 +1,9 @@
+# Review Loop - Multi-perspective code review
+# Iterates through each reviewer, then aggregates findings
+
+name: review
+description: Run multiple specialized code reviewers
+completion: all-items
+items: security logic performance
+delay: 2
+output_parse: findings:FINDINGS_COUNT critical:CRITICAL_COUNT

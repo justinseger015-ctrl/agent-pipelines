@@ -1,0 +1,8 @@
+# Work Loop - Implementation from beads
+# Iterates until all beads for this session are complete
+
+name: work
+description: Implement features from beads until done
+completion: beads-empty
+check_before: true
+delay: 3
