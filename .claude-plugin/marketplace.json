@@ -1,14 +1,14 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "loop-agents-marketplace",
-  "description": "Autonomous multi-task execution with context-preserving loops",
+  "name": "dodo-digital",
+  "description": "Plugins by Dodo Digital",
   "owner": {
-    "name": "Harrison Wells"
+    "name": "Dodo Digital"
   },
   "plugins": [
     {
       "name": "loop-agents",
-      "description": "Autonomous multi-task execution with context-preserving loops",
+      "description": "Create and manage autonomous Loop Agents in Claude Code",
       "version": "1.0.0",
       "author": {
         "name": "Harrison Wells"
