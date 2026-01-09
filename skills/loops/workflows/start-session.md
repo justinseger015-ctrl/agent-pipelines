@@ -10,7 +10,7 @@ Read `references/state-management.md` before proceeding.
 
 Check that the project has required files:
 ```bash
-ls scripts/loop/loop.sh scripts/loop/prompt.md 2>/dev/null || echo "MISSING"
+ls .claude/loop-agents/scripts/loop.sh .claude/loop-agents/scripts/prompt.md 2>/dev/null || echo "MISSING"
 ```
 
 If missing, warn the user:
@@ -45,7 +45,7 @@ PROJECT_PATH="$(pwd)"
 SESSION_TAG="${NAME}"  # e.g., "auth-refactor" from "loop-auth-refactor"
 
 # Start detached session with session name for beads
-tmux new-session -d -s "loop-NAME" -c "$PROJECT_PATH" "./scripts/loop/loop.sh 50 $SESSION_TAG"
+tmux new-session -d -s "loop-NAME" -c "$PROJECT_PATH" ".claude/loop-agents/scripts/loop.sh 50 $SESSION_TAG"
 ```
 
 The session name is passed to `loop.sh` so beads are tagged `loop/{session-tag}`.
@@ -92,7 +92,7 @@ Display:
 ║  Kill:     tmux kill-session -t loop-NAME                ║
 ║                                                          ║
 ║  Beads:    bd ready --tag=loop/SESSION_TAG               ║
-║  Progress: cat scripts/loop/progress-SESSION_TAG.txt     ║
+║  Progress: cat .claude/loop-progress/progress-SESSION_TAG.txt ║
 ║                                                          ║
 ║  ⚠️  Remember to check on this session!                   ║
 ║                                                          ║

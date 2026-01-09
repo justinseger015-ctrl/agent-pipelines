@@ -46,9 +46,9 @@ tmux has-session -t loop-NAME 2>/dev/null \
 
 ```
 Session killed. Check results:
-- Progress: scripts/loop/progress.txt
+- Progress: .claude/loop-progress/progress-{session}.txt
 - Commits: git log --oneline -10
-- PRD status: scripts/loop/prd.json
+- Beads: bd list --tag=loop/{session}
 ```
 
 </process>
