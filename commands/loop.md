@@ -1,222 +1,209 @@
 ---
-description: Plan, launch, and monitor autonomous loop agents
+description: Orchestrate and manage autonomous loop agents
 ---
 
 # /loop Command
 
-**Automated end-to-end flow:** Gather context → Generate PRD → Create tasks → Launch autonomous agent
-
-Execute phases adaptively based on context. Always use `AskUserQuestion` for interactions - be quick and conversational.
+**Loop orchestration:** Plan workflows, manage running loops, and get guidance on what to do next.
 
 ## Usage
 
 ```
-/loop                    # Full adaptive flow
-/loop status             # Check running loops
+/loop                    # Interactive: decide what to do
+/loop status             # Check all running loops
 /loop attach NAME        # Attach to a session
 /loop kill NAME          # Stop a session
+/loop plan               # Plan a new feature (PRD + beads)
 ```
 
 ---
 
-## ADAPTIVE EXECUTION
+## Available Loop Types
 
-**Key principle:** Be intelligent about what's needed. Skip phases that aren't necessary. Always use `AskUserQuestion` with an "Other" option so users can type custom responses quickly.
+| Loop | Command | Stops When |
+|------|---------|------------|
+| **Work** | `/work` | All beads complete |
+| **Refine** | `/refine` | 2 agents agree it's ready |
+| **Ideate** | `/ideate` | Fixed iterations |
 
-### Phase 1: Gather Context (Adaptive)
+---
 
-**If invoked with no context** (user just typed `/loop`):
+## Adaptive Guidance
 
-Use `AskUserQuestion`:
-```yaml
-question: "What do you want to build or accomplish?"
-header: "Goal"
-options:
-  - label: "Build a new feature"
-    description: "Add new functionality to the codebase"
-  - label: "Improve existing code"
-    description: "Refactor, optimize, or fix something"
-  - label: "Batch operation"
-    description: "Process multiple items (files, records, etc.)"
-  - label: "I have a PRD ready"
-    description: "Skip planning, go straight to task generation"
-```
+**When user types `/loop` with no arguments:**
 
-Then ask for specifics:
-```yaml
-question: "Briefly describe what you want to build:"
-header: "Description"
-options:
-  - label: "Let me type it out"
-    description: "I'll describe it in the 'Other' field below"
-```
-
-**If invoked with context** (user described what they want):
-
-Ask deeper clarifying questions based on what they said. Examples:
-- "What's the scope?" (MVP vs full feature)
-- "Any specific tech/patterns to use?"
-- "What should it integrate with?"
-
-**If context is already clear** (enough detail provided):
-
-Confirm and move to PRD generation:
-```yaml
-question: "Ready to generate a PRD for: {summary}?"
-header: "Confirm"
-options:
-  - label: "Yes, generate PRD"
-    description: "I'll review and refine it"
-  - label: "Let me add more details"
-    description: "I want to clarify something first"
-```
-
-### Phase 2: Research Codebase (Skip if Not Needed)
-
-**Only spawn Explore subagents if:**
-- Building on existing code
-- Need to understand patterns/architecture
-- Integrating with existing systems
-
-**Skip exploration if:**
-- Greenfield/new project
-- User already knows the codebase well
-- The feature is standalone
-
-When exploring, spawn 1-2 focused agents:
-```
-Task(subagent_type="Explore", prompt="Find files related to {topic}. Understand patterns to follow.")
-```
-
-### Phase 3: Generate PRD
-
-Invoke the create-prd skill:
-```
-Skill(skill="create-prd")
-```
-
-This asks adaptive questions and creates: `brain/outputs/{date}-{slug}-prd.md`
-
-**Skip if user said "I have a PRD ready"** - use `AskUserQuestion` to ask which PRD:
-```yaml
-question: "Which PRD should I use?"
-header: "PRD"
-options:
-  - label: "{most recent PRD}"
-    description: "brain/outputs/{filename}"
-  - label: "Let me specify"
-    description: "I'll provide the path"
-```
-
-### Phase 4: Generate Stories → Beads
-
-Invoke the create-tasks skill:
-```
-Skill(skill="create-tasks")
-```
-
-This creates beads tagged `loop/{session-name}` and returns the session name.
-
-### Phase 5: Confirm and Launch
-
-**Calculate suggested iterations:** stories + buffer for retries/fixes
-- 5 stories → suggest ~8 iterations
-- 10 stories → suggest ~15 iterations
-- 15 stories → suggest ~20 iterations
-- Formula: `stories * 1.3 + 3` (rounded up)
-
-Use `AskUserQuestion` for final confirmation:
-```yaml
-question: "Ready to launch loop-{session-name} with {N} stories?"
-header: "Launch"
-options:
-  - label: "Yes, start it ({suggested} iterations)"
-    description: "Recommended based on {N} stories"
-  - label: "Test one iteration first"
-    description: "Run loop-once.sh to verify setup"
-  - label: "Fewer iterations ({stories + 2})"
-    description: "Tighter run, less buffer"
-```
-
-### Phase 6: Launch in tmux
-
+First, check the current state:
 ```bash
-SESSION_NAME="{from phase 4}"
-ITERATIONS="{from phase 5, default 15}"
+# Running loops
+RUNNING=$(tmux list-sessions -F "#{session_name}" 2>/dev/null | grep "^loop-" | wc -l | tr -d ' ')
 
-tmux new-session -d -s "loop-$SESSION_NAME" -c "$(pwd)" ".claude/loop-agents/scripts/loop.sh $ITERATIONS $SESSION_NAME"
+# Ready beads
+READY_BEADS=$(bd ready 2>/dev/null | grep -c "^" || echo "0")
+
+# Recent plans
+RECENT_PLANS=$(ls -t docs/plans/*.md 2>/dev/null | head -3)
 ```
 
-**Show confirmation:**
+Then offer contextual options:
 
-```
-╔════════════════════════════════════════════════════════════╗
-║  🚀 Loop Launched: loop-{session-name}                     ║
-╠════════════════════════════════════════════════════════════╣
-║                                                            ║
-║  Running autonomously ({iterations} iterations max)        ║
-║                                                            ║
-║  Check progress:                                           ║
-║    bd ready --label=loop/{session-name}                      ║
-║    tmux capture-pane -t loop-{session-name} -p | tail -20  ║
-║                                                            ║
-║  Commands:                                                 ║
-║    /loop status                - Check all loops           ║
-║    /loop attach {session-name} - Watch live                ║
-║    /loop kill {session-name}   - Stop the loop             ║
-║                                                            ║
-╚════════════════════════════════════════════════════════════╝
-```
-
----
-
-## ALWAYS USE AskUserQuestion
-
-**Every interaction should use `AskUserQuestion`** with practical options plus the ability to type custom input (users can always select "Other").
-
-Good pattern:
+**If loops are running:**
 ```yaml
-question: "What testing framework does this project use?"
-header: "Tests"
+question: "You have {N} loop(s) running. What would you like to do?"
+header: "Loops"
 options:
-  - label: "npm test"
-    description: "Standard npm test command"
-  - label: "pytest"
-    description: "Python pytest"
-  - label: "No tests yet"
-    description: "Skip test verification"
+  - label: "Check status"
+    description: "See progress of running loops"
+  - label: "Attach to a loop"
+    description: "Watch a loop live"
+  - label: "Start something new"
+    description: "Plan or launch another loop"
 ```
 
-This keeps things quick and interactive - user clicks an option or types something custom.
+**If beads exist but no work loop:**
+```yaml
+question: "Found {N} ready beads. What's next?"
+header: "Beads Ready"
+options:
+  - label: "Start work loop (Recommended)"
+    description: "Launch /work to implement beads"
+  - label: "Refine first"
+    description: "Run /refine to improve beads before work"
+  - label: "Review the plan"
+    description: "Look at beads before deciding"
+```
+
+**If no beads and no recent plan:**
+```yaml
+question: "No beads or plans found. What would you like to do?"
+header: "Getting Started"
+options:
+  - label: "Plan a new feature"
+    description: "Create PRD and break into tasks"
+  - label: "Generate ideas"
+    description: "Brainstorm improvements with /ideate"
+```
 
 ---
 
-## Subcommands
+## Plan a New Feature
+
+When user wants to plan:
+
+1. **Generate PRD:**
+```
+Skill(skill="loop-agents:prd")
+```
+Creates: `docs/plans/{date}-{slug}-prd.md`
+
+2. **Create beads from PRD:**
+```
+Skill(skill="loop-agents:create-tasks")
+```
+Creates beads tagged `loop/{session}`.
+
+3. **Offer refinement:**
+```yaml
+question: "Plan created with {N} beads. Ready to work or refine first?"
+header: "Next Step"
+options:
+  - label: "Launch work loop (Recommended)"
+    description: "Start implementing now"
+  - label: "Refine first"
+    description: "Improve plan quality with /refine"
+  - label: "Review beads"
+    description: "Show me the beads first"
+```
+
+---
+
+## Status and Management
 
 ### /loop status
+
+Show comprehensive status:
 ```bash
-tmux list-sessions 2>/dev/null | grep "^loop-" || echo "No loop sessions running"
-bd ready --label=loop/ 2>/dev/null | head -10
+echo "=== Running Loops ==="
+tmux list-sessions 2>/dev/null | grep "^loop-" || echo "No loops running"
+
+echo ""
+echo "=== Beads Summary ==="
+for session in $(tmux list-sessions -F "#{session_name}" 2>/dev/null | grep "^loop-" | sed 's/^loop-//'); do
+  total=$(bd list --label="loop/$session" 2>/dev/null | grep -c "^" || echo "0")
+  ready=$(bd ready --label="loop/$session" 2>/dev/null | grep -c "^" || echo "0")
+  echo "  $session: $ready/$total remaining"
+done
+
+echo ""
+echo "=== Untagged Ready Beads ==="
+bd ready 2>/dev/null | grep -v "loop/" | head -5 || echo "None"
 ```
 
 ### /loop attach NAME
+
 ```bash
-tmux attach -t loop-NAME
+tmux attach -t loop-{NAME}
 ```
-Remind: `Ctrl+b` then `d` to detach.
+
+Remind: `Ctrl+b d` to detach without stopping.
 
 ### /loop kill NAME
+
 ```bash
-tmux kill-session -t loop-NAME
+tmux kill-session -t loop-{NAME}
+```
+
+Confirm first: "This will stop the loop. Any bead in progress may be incomplete."
+
+---
+
+## Building Pipelines
+
+For complex workflows, use pipelines:
+
+```bash
+PLUGIN_DIR=".claude/loop-agents"
+
+# Quick refine then work
+$PLUGIN_DIR/scripts/loop-engine/pipeline.sh quick-refine session-name
+$PLUGIN_DIR/scripts/loop-engine/run.sh work session-name 20
+
+# Full quality pipeline
+$PLUGIN_DIR/scripts/loop-engine/pipeline.sh deep-refine session-name
+$PLUGIN_DIR/scripts/loop-engine/run.sh review session-name 9
+$PLUGIN_DIR/scripts/loop-engine/run.sh work session-name 30
+```
+
+### Available Pipelines
+
+| Pipeline | Improve-Plan | Refine-Beads | Best For |
+|----------|--------------|--------------|----------|
+| `quick-refine` | 3 iterations | 3 iterations | Fast validation |
+| `full-refine` | 5 iterations | 5 iterations | Standard workflow |
+| `deep-refine` | 8 iterations | 8 iterations | Complex projects |
+
+---
+
+## Multi-Session Support
+
+Run multiple loops simultaneously:
+```bash
+# Different features in parallel
+tmux new-session -d -s "loop-auth" ...
+tmux new-session -d -s "loop-api" ...
+
+# Each has separate beads, progress, and state
 ```
 
 ---
 
-## Multi-Agent Support
+## Quick Reference
 
-Multiple loops run simultaneously with separate beads and progress files:
-
-```bash
-tmux new-session -d -s "loop-auth" ".claude/loop-agents/scripts/loop.sh 15 auth"
-tmux new-session -d -s "loop-dashboard" ".claude/loop-agents/scripts/loop.sh 15 dashboard"
-```
+| Want to... | Command |
+|------------|---------|
+| Start new feature | `/loop plan` or `/loop-agents:prd` |
+| Implement tasks | `/work` |
+| Improve plans/beads | `/refine` |
+| Generate ideas | `/ideate` |
+| Check running loops | `/loop status` |
+| Watch a loop | `/loop attach NAME` |
+| Stop a loop | `/loop kill NAME` |
