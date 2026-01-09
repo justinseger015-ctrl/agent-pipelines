@@ -7,10 +7,7 @@
     "url": "https://github.com/hwells4"
   },
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/hwells4/loop-agents"
-  },
+  "repository": "https://github.com/hwells4/loop-agents",
   "keywords": [
     "autonomous",
     "loop",
