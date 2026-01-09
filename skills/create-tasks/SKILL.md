@@ -120,29 +120,26 @@ options:
     description: "I'll type a custom name"
 ```
 
-**Verification commands:**
+**Verification commands (optional):**
 
-Detect project type and offer relevant options:
-- `package.json` → npm test, npm run typecheck, npm run lint
-- `Gemfile` → bundle exec rspec, bundle exec rubocop
-- `pyproject.toml`/`setup.py` → pytest, mypy, ruff
-- `go.mod` → go test ./..., go vet ./...
-- `Cargo.toml` → cargo test, cargo clippy
-
+Ask what commands should run after each task:
 ```yaml
-question: "What commands verify the code works?"
+question: "What commands should verify each task? (leave empty for none)"
 header: "Verify"
-multiSelect: true
 options:
-  # Offer 3-4 relevant options based on detected project type
-  # Always include "No tests yet" and let user specify custom via "Other"
+  - label: "None"
+    description: "No verification needed"
+  - label: "Custom"
+    description: "I'll specify commands"
 ```
 
-**Save verification commands:** After user selects, update the progress file header:
+If user specifies commands, save to progress file header:
 ```bash
 # Replace the Verify: line in the progress file
 sed -i '' "s/^Verify:.*/Verify: ${COMMANDS}/" .claude/loop-progress/progress-${SESSION}.txt
 ```
+
+Examples: `npm test && npm run typecheck`, `pytest`, `bundle exec rspec`, or any custom commands.
 
 ### 6. Create Beads
 
