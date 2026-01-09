@@ -16,10 +16,10 @@ An iteration of the [Ralph Wiggum loop](https://ghuntley.com/ralph/) pattern - a
 
 ```bash
 # Add the marketplace
-/plugin marketplace add hwells4/loop-agents
+claude plugin marketplace add https://github.com/hwells4/loop-agents
 
 # Install the plugin
-/plugin install loop-agents@loop-agents-marketplace
+claude plugin install loop-agents@dodo-digital
 ```
 
 ## Dependencies
