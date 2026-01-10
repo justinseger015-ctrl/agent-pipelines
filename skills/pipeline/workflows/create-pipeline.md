@@ -21,7 +21,7 @@ Ask the user what they want the pipeline to accomplish:
 ```
 
 If they choose a template option, read the corresponding template from:
-`scripts/orchestrator/templates/{option}.yaml`
+`scripts/pipelines/templates/{option}.yaml`
 
 Use it as a starting point, then customize.
 
@@ -100,7 +100,7 @@ Check the pipeline:
 Tell the user:
 - Pipeline saved to `.claude/pipelines/{name}.yaml`
 - How to run it: `/loop-agents:pipeline` then select "Run"
-- Or directly: `.claude/loop-agents/scripts/orchestrator/run.sh {name}`
+- Or directly: `.claude/loop-agents/scripts/pipelines/run.sh {name}`
 
 ## Prompt Writing Tips
 

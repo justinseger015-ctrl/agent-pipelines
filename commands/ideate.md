@@ -78,12 +78,12 @@ options:
 PLUGIN_DIR=".claude/loop-agents"
 SESSION_NAME="ideate-$(date +%Y%m%d)"
 
-$PLUGIN_DIR/scripts/loop-engine/run.sh idea-wizard $SESSION_NAME 1
+$PLUGIN_DIR/scripts/loops/run.sh idea-wizard $SESSION_NAME 1
 ```
 
 **For multiple iterations** (more diverse ideas):
 ```bash
-$PLUGIN_DIR/scripts/loop-engine/run.sh idea-wizard $SESSION_NAME 3
+$PLUGIN_DIR/scripts/loops/run.sh idea-wizard $SESSION_NAME 3
 ```
 
 Each iteration reads previous ideas from `docs/ideas.md` to avoid duplicates.

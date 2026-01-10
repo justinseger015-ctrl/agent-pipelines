@@ -9,7 +9,7 @@ ls -la .claude/pipelines/*.yaml 2>/dev/null || echo "  (none)"
 
 echo ""
 echo "=== Available Templates ==="
-ls -la .claude/loop-agents/scripts/orchestrator/templates/*.yaml 2>/dev/null || echo "  (none)"
+ls -la .claude/loop-agents/scripts/pipelines/templates/*.yaml 2>/dev/null || echo "  (none)"
 ```
 
 ## Step 2: Show Details
@@ -49,7 +49,7 @@ Present to user:
 | ideate | Generate and synthesize ideas | 3 |
 
 To copy a template:
-  cp .claude/loop-agents/scripts/orchestrator/templates/{name}.yaml .claude/pipelines/
+  cp .claude/loop-agents/scripts/pipelines/templates/{name}.yaml .claude/pipelines/
 ```
 
 ## Step 4: Offer Actions

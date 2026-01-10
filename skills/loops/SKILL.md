@@ -69,14 +69,14 @@ Use the AskUserQuestion tool with these options:
 
 <quick_commands>
 ```bash
-# Start a work loop (use loop-engine)
+# Start a work loop (use loops)
 PLUGIN_DIR=".claude/loop-agents"
-tmux new-session -d -s loop-NAME -c "$(pwd)" "$PLUGIN_DIR/scripts/loop-engine/run.sh work NAME 50"
+tmux new-session -d -s loop-NAME -c "$(pwd)" "$PLUGIN_DIR/scripts/loops/run.sh work NAME 50"
 
 # Start other loop types
-$PLUGIN_DIR/scripts/loop-engine/run.sh improve-plan NAME 5 # Plan refinement
-$PLUGIN_DIR/scripts/loop-engine/run.sh refine-beads NAME 5 # Bead refinement
-$PLUGIN_DIR/scripts/loop-engine/run.sh idea-wizard NAME 3  # Idea generation
+$PLUGIN_DIR/scripts/loops/run.sh improve-plan NAME 5 # Plan refinement
+$PLUGIN_DIR/scripts/loops/run.sh refine-beads NAME 5 # Bead refinement
+$PLUGIN_DIR/scripts/loops/run.sh idea-wizard NAME 3  # Idea generation
 
 # Peek at output (safe, doesn't attach)
 tmux capture-pane -t loop-NAME -p | tail -50

@@ -15,7 +15,7 @@ PIPELINE_FILE=${1:?"Usage: run.sh <pipeline.yaml> [session_name]"}
 # Resolve paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(pwd)"
-LOOP_ENGINE_DIR="$SCRIPT_DIR/../loop-engine"
+LOOPS_DIR="$SCRIPT_DIR/../loops"
 
 # Check dependencies
 for cmd in jq claude; do
@@ -102,6 +102,23 @@ for stage_idx in $(seq 0 $((STAGE_COUNT - 1))); do
   STAGE_PROVIDER=$(get_stage_value "$stage_idx" "provider" "$DEFAULT_PROVIDER")
   STAGE_COMPLETION=$(get_stage_value "$stage_idx" "completion" "")
   STAGE_DESC=$(get_stage_value "$stage_idx" "description" "")
+  STAGE_PARALLEL=$(get_stage_value "$stage_idx" "parallel" "false")
+  STAGE_LOOP=$(get_stage_value "$stage_idx" "loop" "")
+
+  # If using a loop type, load its config and prompt
+  USING_LOOP=""
+  if [ -n "$STAGE_LOOP" ]; then
+    if load_loop_type "$STAGE_LOOP"; then
+      USING_LOOP="$STAGE_LOOP"
+      # Inherit completion strategy from loop if not specified
+      [ -z "$STAGE_COMPLETION" ] && [ -n "$LOOP_COMPLETION" ] && STAGE_COMPLETION="$LOOP_COMPLETION"
+      # Inherit model from loop if not specified in stage or defaults
+      [ "$STAGE_MODEL" = "$DEFAULT_MODEL" ] && [ -n "$LOOP_MODEL" ] && STAGE_MODEL="$LOOP_MODEL"
+    else
+      echo "Error: Failed to load loop type: $STAGE_LOOP" >&2
+      exit 1
+    fi
+  fi
 
   # Create stage output directory
   STAGE_DIR="$RUN_DIR/stage-$((stage_idx + 1))-$STAGE_NAME"
@@ -110,16 +127,22 @@ for stage_idx in $(seq 0 $((STAGE_COUNT - 1))); do
   echo "┌──────────────────────────────────────────────────────────────"
   echo "│ Stage $((stage_idx + 1))/$STAGE_COUNT: $STAGE_NAME"
   [ -n "$STAGE_DESC" ] && echo "│ $STAGE_DESC"
+  [ -n "$USING_LOOP" ] && echo "│ Loop: $USING_LOOP"
   echo "│ Runs: $STAGE_RUNS | Model: $STAGE_MODEL"
   [ -n "$STAGE_COMPLETION" ] && echo "│ Completion: $STAGE_COMPLETION"
+  [ "$STAGE_PARALLEL" = "true" ] && echo "│ ⚠️  parallel: true not yet implemented (runs sequentially)"
   echo "└──────────────────────────────────────────────────────────────"
   echo ""
 
   # Update state
   update_state_stage "$STATE_FILE" "$stage_idx" "$STAGE_NAME" "running"
 
-  # Get prompt template and perspectives
-  PROMPT_TEMPLATE=$(get_stage_prompt "$stage_idx")
+  # Get prompt template - from loop or inline
+  if [ -n "$USING_LOOP" ]; then
+    PROMPT_TEMPLATE="$LOOP_PROMPT"
+  else
+    PROMPT_TEMPLATE=$(get_stage_prompt "$stage_idx")
+  fi
   PERSPECTIVES=$(get_stage_array "$stage_idx" "perspectives")
   PROGRESS_FILE="$STAGE_DIR/progress.md"
 

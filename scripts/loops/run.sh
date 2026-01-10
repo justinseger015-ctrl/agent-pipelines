@@ -13,7 +13,7 @@ if [ -z "$1" ]; then
   echo "Usage: run.sh <loop_type> [session_name] [max_iterations]"
   echo ""
   echo "Available loop types:"
-  for dir in "$SCRIPT_DIR/../loops"/*/; do
+  for dir in "$SCRIPT_DIR"/*/; do
     name=$(basename "$dir")
     desc=$(grep "^description:" "$dir/loop.yaml" 2>/dev/null | cut -d: -f2- | sed 's/^[[:space:]]*//')
     echo "  $name - $desc"

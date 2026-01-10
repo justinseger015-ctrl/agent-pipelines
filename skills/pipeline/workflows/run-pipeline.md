@@ -10,7 +10,7 @@ ls -la .claude/pipelines/*.yaml 2>/dev/null
 If no pipelines exist:
 - Tell user: "No pipelines found in `.claude/pipelines/`"
 - Suggest: "Would you like to create one? Use `/loop-agents:pipeline` and select Create"
-- Or: "You can copy a template from `.claude/loop-agents/scripts/orchestrator/templates/`"
+- Or: "You can copy a template from `.claude/loop-agents/scripts/pipelines/templates/`"
 
 ## Step 2: Select Pipeline
 
@@ -77,7 +77,7 @@ PIPELINE="{selected-pipeline}"
 SESSION="{session-name}"  # or auto-generated
 
 tmux new-session -d -s "pipeline-$SESSION" -c "$(pwd)" \
-  "$PLUGIN_DIR/scripts/orchestrator/run.sh $PIPELINE $SESSION"
+  "$PLUGIN_DIR/scripts/pipelines/run.sh $PIPELINE $SESSION"
 
 echo "Pipeline launched in tmux session: pipeline-$SESSION"
 ```
@@ -85,7 +85,7 @@ echo "Pipeline launched in tmux session: pipeline-$SESSION"
 **Foreground:**
 ```bash
 PLUGIN_DIR=".claude/loop-agents"
-$PLUGIN_DIR/scripts/orchestrator/run.sh {pipeline} {session}
+$PLUGIN_DIR/scripts/pipelines/run.sh {pipeline} {session}
 ```
 
 ## Step 6: Provide Status

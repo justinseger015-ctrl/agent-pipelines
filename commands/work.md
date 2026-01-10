@@ -79,7 +79,7 @@ ITERATIONS="{iterations}"
 PLUGIN_DIR=".claude/loop-agents"
 
 tmux new-session -d -s "loop-$SESSION_NAME" -c "$(pwd)" \
-  "$PLUGIN_DIR/scripts/loop-engine/run.sh work $SESSION_NAME $ITERATIONS"
+  "$PLUGIN_DIR/scripts/loops/run.sh work $SESSION_NAME $ITERATIONS"
 ```
 
 ### Show Status
@@ -108,7 +108,7 @@ For single iteration test:
 
 ```bash
 # Run one iteration in foreground
-$PLUGIN_DIR/scripts/loop-engine/run.sh work $SESSION_NAME 1
+$PLUGIN_DIR/scripts/loops/run.sh work $SESSION_NAME 1
 ```
 
 This helps verify:

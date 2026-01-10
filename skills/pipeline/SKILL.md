@@ -19,7 +19,7 @@ description: Create and run multi-stage pipelines. Orchestrate sequences of AI a
 **Key Directories:**
 - `.claude/pipelines/` - Pipeline definitions (YAML)
 - `.claude/pipeline-runs/{session}/` - Execution outputs
-- `.claude/loop-agents/scripts/orchestrator/` - Engine
+- `.claude/loop-agents/scripts/pipelines/` - Engine
 
 **Provider Support:**
 - `claude-code` - Claude Code CLI (default)
@@ -67,12 +67,12 @@ Use the AskUserQuestion tool:
 PLUGIN_DIR=".claude/loop-agents"
 
 # Run a pipeline
-$PLUGIN_DIR/scripts/orchestrator/run.sh my-pipeline
-$PLUGIN_DIR/scripts/orchestrator/run.sh my-pipeline custom-session-name
+$PLUGIN_DIR/scripts/pipelines/run.sh my-pipeline
+$PLUGIN_DIR/scripts/pipelines/run.sh my-pipeline custom-session-name
 
 # Run in tmux (background)
 tmux new-session -d -s pipeline-NAME -c "$(pwd)" \
-  "$PLUGIN_DIR/scripts/orchestrator/run.sh my-pipeline NAME"
+  "$PLUGIN_DIR/scripts/pipelines/run.sh my-pipeline NAME"
 
 # List pipelines
 ls -la .claude/pipelines/*.yaml 2>/dev/null
@@ -84,7 +84,7 @@ ls -la .claude/pipeline-runs/
 cat .claude/pipeline-runs/SESSION/state.json | jq '.status'
 
 # View templates
-ls $PLUGIN_DIR/scripts/orchestrator/templates/
+ls $PLUGIN_DIR/scripts/pipelines/templates/
 ```
 </quick_commands>
 
@@ -139,7 +139,7 @@ stages:                       # Required: list of stages
 </workflows_index>
 
 <templates_index>
-Templates in `scripts/orchestrator/templates/`:
+Templates in `scripts/pipelines/templates/`:
 | Template | Purpose |
 |----------|---------|
 | code-review.yaml | Multi-perspective code review with synthesis |

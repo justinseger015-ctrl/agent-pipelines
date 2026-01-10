@@ -11,6 +11,7 @@
 #   ${INPUTS}            - All outputs from previous stage (shorthand)
 
 # Resolve all variables in a prompt template
+# Uses bash parameter expansion for multi-line content safety
 resolve_prompt() {
   local template=$1
   local stage_idx=$2
@@ -21,34 +22,40 @@ resolve_prompt() {
 
   local resolved="$template"
 
-  # Basic substitutions
-  resolved=$(echo "$resolved" | sed "s|\${SESSION}|$SESSION_NAME|g")
-  resolved=$(echo "$resolved" | sed "s|\${INDEX}|$run_idx|g")
-  resolved=$(echo "$resolved" | sed "s|\${PERSPECTIVE}|$perspective|g")
-  resolved=$(echo "$resolved" | sed "s|\${OUTPUT}|$output_file|g")
+  # Calculate 1-based iteration for loop compatibility
+  local iteration=$((run_idx + 1))
+
+  # Orchestrator variables
+  resolved="${resolved//\$\{SESSION\}/$SESSION_NAME}"
+  resolved="${resolved//\$\{INDEX\}/$run_idx}"
+  resolved="${resolved//\$\{PERSPECTIVE\}/$perspective}"
+  resolved="${resolved//\$\{OUTPUT\}/$output_file}"
+
+  # Loop-style variables (for compatibility with loop prompts)
+  resolved="${resolved//\$\{SESSION_NAME\}/$SESSION_NAME}"
+  resolved="${resolved//\$\{ITERATION\}/$iteration}"
 
   if [ -n "$progress_file" ]; then
-    resolved=$(echo "$resolved" | sed "s|\${PROGRESS}|$progress_file|g")
+    resolved="${resolved//\$\{PROGRESS\}/$progress_file}"
+    resolved="${resolved//\$\{PROGRESS_FILE\}/$progress_file}"
   fi
 
   # Resolve ${INPUTS.stage-name} references
-  # Find all ${INPUTS.xxx} patterns
+  # Uses bash parameter expansion to safely handle multi-line content
   while [[ "$resolved" =~ \$\{INPUTS\.([a-zA-Z0-9_-]+)\} ]]; do
     local ref_stage_name="${BASH_REMATCH[1]}"
     local inputs_content=$(resolve_stage_inputs "$ref_stage_name")
 
-    # Escape special characters for sed
-    local escaped_content=$(printf '%s\n' "$inputs_content" | sed 's/[&/\]/\\&/g')
-    resolved=$(echo "$resolved" | sed "s|\${INPUTS\.$ref_stage_name}|$escaped_content|g")
+    # Use bash substitution (handles multi-line content correctly)
+    resolved="${resolved//\$\{INPUTS.$ref_stage_name\}/$inputs_content}"
   done
 
   # Resolve ${INPUTS} (previous stage shorthand)
-  if [[ "$resolved" =~ \$\{INPUTS\} ]]; then
+  if [[ "$resolved" == *'${INPUTS}'* ]]; then
     if [ "$stage_idx" -gt 0 ]; then
       local prev_stage_name=$(get_stage_value "$((stage_idx - 1))" "name")
       local inputs_content=$(resolve_stage_inputs "$prev_stage_name")
-      local escaped_content=$(printf '%s\n' "$inputs_content" | sed 's/[&/\]/\\&/g')
-      resolved=$(echo "$resolved" | sed "s|\${INPUTS}|$escaped_content|g")
+      resolved="${resolved//\$\{INPUTS\}/$inputs_content}"
     fi
   fi
 
@@ -68,8 +75,8 @@ resolve_stage_inputs() {
     return
   fi
 
-  # Collect all output files
-  local output_files=$(find "$stage_dir" -name "*.md" -type f | sort)
+  # Collect all output files (exclude progress.md which is for iteration state)
+  local output_files=$(find "$stage_dir" -name "*.md" ! -name "progress.md" -type f | sort)
 
   if [ -z "$output_files" ]; then
     echo "[No output files in stage: $stage_name]"

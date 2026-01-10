@@ -105,16 +105,16 @@ PLUGIN_DIR=".claude/loop-agents"
 SESSION_NAME="{session}"
 
 # In foreground (shows progress)
-$PLUGIN_DIR/scripts/loop-engine/pipeline.sh full-refine $SESSION_NAME
+$PLUGIN_DIR/scripts/pipelines/run.sh $PLUGIN_DIR/scripts/pipelines/full-refine.yaml $SESSION_NAME
 ```
 
 **For single loops:**
 ```bash
 # Plan only
-$PLUGIN_DIR/scripts/loop-engine/run.sh improve-plan $SESSION_NAME 5
+$PLUGIN_DIR/scripts/loops/run.sh improve-plan $SESSION_NAME 5
 
 # Beads only
-$PLUGIN_DIR/scripts/loop-engine/run.sh refine-beads $SESSION_NAME 5
+$PLUGIN_DIR/scripts/loops/run.sh refine-beads $SESSION_NAME 5
 ```
 
 ### Show Progress

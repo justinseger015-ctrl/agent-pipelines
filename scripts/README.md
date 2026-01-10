@@ -6,31 +6,27 @@ Autonomous execution through the universal loop engine.
 
 ```
 scripts/
-├── loop-engine/           # Core engine (use this)
-│   ├── engine.sh          # Universal loop runner
-│   ├── run.sh             # Convenience wrapper
-│   ├── pipeline.sh        # Multi-loop sequences
-│   ├── config.sh          # Loop configuration loader
-│   ├── lib/               # Shared utilities
-│   │   ├── state.sh       # State file management
-│   │   ├── progress.sh    # Progress file management
-│   │   ├── notify.sh      # Desktop notifications
-│   │   └── parse.sh       # Output parsing
-│   └── completions/       # Stopping conditions
-│       ├── beads-empty.sh # Stops when no beads remain
-│       ├── plateau.sh     # Stops when 2 agents agree it's done
-│       └── all-items.sh   # Stops when all items processed
+├── loops/                     # Loop engine + loop types
+│   ├── engine.sh              # Universal loop runner
+│   ├── run.sh                 # Convenience wrapper
+│   ├── config.sh              # Loop configuration loader
+│   ├── lib/                   # Shared utilities
+│   ├── completions/           # Stopping conditions
+│   │   ├── beads-empty.sh
+│   │   ├── plateau.sh
+│   │   └── fixed-n.sh
+│   ├── work/                  # Loop type: implementation
+│   ├── improve-plan/          # Loop type: plan refinement
+│   ├── refine-beads/          # Loop type: bead refinement
+│   └── idea-wizard/           # Loop type: idea generation
 │
-├── loops/                 # Loop type definitions
-│   ├── work/              # Implementation from beads
-│   ├── improve-plan/      # Plan refinement
-│   ├── refine-beads/      # Bead refinement
-│   └── idea-wizard/       # Idea generation
-│
-└── pipelines/             # Multi-loop sequences
-    ├── quick-refine.yaml  # 3+3 iterations
-    ├── full-refine.yaml   # 5+5 iterations
-    └── deep-refine.yaml   # 8+8 iterations
+└── pipelines/                 # Pipeline engine + definitions
+    ├── run.sh                 # Pipeline runner
+    ├── lib/                   # Parsing, resolution, providers
+    ├── SCHEMA.md              # Pipeline schema reference
+    ├── quick-refine.yaml      # 3+3 iterations
+    ├── full-refine.yaml       # 5+5 iterations
+    └── deep-refine.yaml       # 8+8 iterations
 ```
 
 ## Usage
@@ -41,16 +37,16 @@ scripts/
 PLUGIN_DIR=".claude/loop-agents"
 
 # Work loop - implement tasks from beads
-$PLUGIN_DIR/scripts/loop-engine/run.sh work my-feature 25
+$PLUGIN_DIR/scripts/loops/run.sh work my-feature 25
 
 # Plan refinement - improve docs/plans/
-$PLUGIN_DIR/scripts/loop-engine/run.sh improve-plan my-session 5
+$PLUGIN_DIR/scripts/loops/run.sh improve-plan my-session 5
 
 # Bead refinement - improve bead quality
-$PLUGIN_DIR/scripts/loop-engine/run.sh refine-beads my-session 5
+$PLUGIN_DIR/scripts/loops/run.sh refine-beads my-session 5
 
 # Idea generation - brainstorm improvements
-$PLUGIN_DIR/scripts/loop-engine/run.sh idea-wizard ideas 3
+$PLUGIN_DIR/scripts/loops/run.sh idea-wizard ideas 3
 ```
 
 ### Running in Background (tmux)
@@ -61,7 +57,7 @@ PLUGIN_DIR=".claude/loop-agents"
 
 # Start work loop in background
 tmux new-session -d -s "loop-$SESSION_NAME" -c "$(pwd)" \
-  "$PLUGIN_DIR/scripts/loop-engine/run.sh work $SESSION_NAME 25"
+  "$PLUGIN_DIR/scripts/loops/run.sh work $SESSION_NAME 25"
 
 # Monitor
 tmux capture-pane -t "loop-$SESSION_NAME" -p | tail -20
@@ -77,13 +73,38 @@ tmux kill-session -t "loop-$SESSION_NAME"
 
 ```bash
 # Refine plans then beads
-$PLUGIN_DIR/scripts/loop-engine/pipeline.sh full-refine my-session
+$PLUGIN_DIR/scripts/pipelines/run.sh $PLUGIN_DIR/scripts/pipelines/full-refine.yaml my-session
 
 # Quick pass
-$PLUGIN_DIR/scripts/loop-engine/pipeline.sh quick-refine my-session
+$PLUGIN_DIR/scripts/pipelines/run.sh $PLUGIN_DIR/scripts/pipelines/quick-refine.yaml my-session
 
 # Thorough pass
-$PLUGIN_DIR/scripts/loop-engine/pipeline.sh deep-refine my-session
+$PLUGIN_DIR/scripts/pipelines/run.sh $PLUGIN_DIR/scripts/pipelines/deep-refine.yaml my-session
+```
+
+### Pipeline Format
+
+Pipelines can reference existing loop types or define inline prompts:
+
+```yaml
+# Reference existing loop types
+stages:
+  - name: improve-plan
+    loop: improve-plan    # Uses loops/improve-plan/prompt.md
+    runs: 5
+
+  - name: refine-beads
+    loop: refine-beads
+    runs: 5
+
+# Or define inline prompts
+stages:
+  - name: custom-review
+    runs: 4
+    perspectives: [security, performance, clarity, testing]
+    prompt: |
+      Review from ${PERSPECTIVE} perspective.
+      Write to ${OUTPUT}
 ```
 
 ## Loop Types
@@ -139,10 +160,10 @@ Run multiple loops simultaneously:
 ```bash
 # Different features in parallel
 tmux new-session -d -s "loop-auth" -c "$(pwd)" \
-  "$PLUGIN_DIR/scripts/loop-engine/run.sh work auth 25"
+  "$PLUGIN_DIR/scripts/loops/run.sh work auth 25"
 
 tmux new-session -d -s "loop-api" -c "$(pwd)" \
-  "$PLUGIN_DIR/scripts/loop-engine/run.sh work api 25"
+  "$PLUGIN_DIR/scripts/loops/run.sh work api 25"
 ```
 
 Each session has:

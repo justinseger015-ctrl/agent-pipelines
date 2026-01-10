@@ -57,6 +57,7 @@ parse_pipeline() {
     PIPELINE_DATA["stage.${i}.completion"]=$(jq -r ".stages[$i].completion // empty" "$tmpfile")
     PIPELINE_DATA["stage.${i}.parallel"]=$(jq -r ".stages[$i].parallel // empty" "$tmpfile")
     PIPELINE_DATA["stage.${i}.prompt"]=$(jq -r ".stages[$i].prompt // empty" "$tmpfile")
+    PIPELINE_DATA["stage.${i}.loop"]=$(jq -r ".stages[$i].loop // empty" "$tmpfile")
 
     # Parse perspectives array (pipe-delimited for easy iteration)
     local perspectives=$(jq -r ".stages[$i].perspectives // [] | join(\"|\")" "$tmpfile")
@@ -122,6 +123,55 @@ get_array_item() {
   fi
 
   echo "$array" | tr '|' '\n' | sed -n "$((index + 1))p"
+}
+
+# Load loop type configuration and prompt
+# Returns: sets LOOP_PROMPT, LOOP_COMPLETION, LOOP_MODEL variables
+load_loop_type() {
+  local loop_name=$1
+  local loops_dir="${SCRIPT_DIR}/../../loops"
+  local loop_config="$loops_dir/$loop_name/loop.yaml"
+  local loop_prompt="$loops_dir/$loop_name/prompt.md"
+
+  if [ ! -d "$loops_dir/$loop_name" ]; then
+    echo "Error: Loop type not found: $loop_name" >&2
+    echo "Available loops:" >&2
+    ls "$loops_dir" 2>/dev/null | while read d; do
+      [ -d "$loops_dir/$d" ] && echo "  $d" >&2
+    done
+    return 1
+  fi
+
+  # Load prompt
+  if [ -f "$loop_prompt" ]; then
+    LOOP_PROMPT=$(cat "$loop_prompt")
+  else
+    # Check for prompts subdirectory
+    local first_prompt=$(ls "$loops_dir/$loop_name/prompts/"*.md 2>/dev/null | head -1)
+    if [ -n "$first_prompt" ]; then
+      LOOP_PROMPT=$(cat "$first_prompt")
+    else
+      echo "Error: No prompt found for loop: $loop_name" >&2
+      return 1
+    fi
+  fi
+
+  # Load config (simple key: value parsing)
+  LOOP_COMPLETION=""
+  LOOP_MODEL=""
+  if [ -f "$loop_config" ]; then
+    while IFS=': ' read -r key value; do
+      [[ "$key" =~ ^#.*$ ]] && continue
+      [[ -z "$key" ]] && continue
+      value=$(echo "$value" | sed 's/^["'\'']//' | sed 's/["'\'']$//')
+      case "$key" in
+        completion) LOOP_COMPLETION="$value" ;;
+        model) LOOP_MODEL="$value" ;;
+      esac
+    done < "$loop_config"
+  fi
+
+  return 0
 }
 
 # Update state file with stage status

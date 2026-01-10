@@ -195,34 +195,24 @@ Available pipelines:
 
 ```
 scripts/
-├── loop-engine/
-│   ├── engine.sh          # Core loop runner
-│   ├── run.sh             # Convenience wrapper
-│   ├── pipeline.sh        # Multi-loop sequencing
-│   ├── config.sh          # YAML configuration loader
-│   ├── lib/
-│   │   ├── state.sh       # JSON state management
-│   │   ├── progress.sh    # Progress file handling
-│   │   ├── notify.sh      # Desktop notifications
-│   │   └── parse.sh       # Output parsing
-│   └── completions/       # Stopping strategies
-│       ├── beads-empty.sh
-│       ├── plateau.sh
-│       ├── fixed-n.sh
-│       └── all-items.sh
+├── loops/                     # Loop engine + loop types
+│   ├── engine.sh              # Core loop runner
+│   ├── run.sh                 # Convenience wrapper
+│   ├── config.sh              # YAML configuration loader
+│   ├── lib/                   # State, progress, notifications
+│   ├── completions/           # Stopping strategies
+│   ├── work/                  # Loop type: implementation
+│   ├── improve-plan/          # Loop type: plan refinement
+│   ├── refine-beads/          # Loop type: bead refinement
+│   └── idea-wizard/           # Loop type: idea generation
 │
-├── loops/                 # Loop type definitions
-│   ├── work/
-│   │   ├── loop.yaml      # Configuration
-│   │   └── prompt.md      # Agent instructions
-│   ├── improve-plan/
-│   ├── refine-beads/
-│   └── idea-wizard/
-│
-└── pipelines/             # Pipeline definitions
-    ├── quick-refine.yaml
-    ├── full-refine.yaml
-    └── deep-refine.yaml
+└── pipelines/                 # Pipeline engine + definitions
+    ├── run.sh                 # Pipeline runner
+    ├── lib/                   # Parsing, resolution, providers
+    ├── SCHEMA.md              # Pipeline schema reference
+    ├── quick-refine.yaml      # 3+3 iterations
+    ├── full-refine.yaml       # 5+5 iterations
+    └── deep-refine.yaml       # 8+8 iterations
 ```
 
 ### Loop Configuration

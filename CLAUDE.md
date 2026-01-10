@@ -70,29 +70,25 @@ When using this plugin, the following directories are created in YOUR project:
 
 ## Architecture
 
-### Loop Engine
-
-The core is a universal loop runner that executes any loop type:
+### Directory Structure
 
 ```
 .claude/loop-agents/scripts/
-├── loop-engine/
-│   ├── engine.sh          # Core loop runner
-│   ├── run.sh             # ./run.sh <type> [session] [max]
-│   ├── pipeline.sh        # ./pipeline.sh <pipeline> [session]
-│   ├── lib/               # Shared utilities
-│   └── completions/       # Stop conditions (plateau, beads-empty, etc.)
+├── loops/                     # Loop engine + loop types
+│   ├── engine.sh              # Core loop runner
+│   ├── run.sh                 # ./run.sh <type> [session] [max]
+│   ├── lib/                   # Shared utilities
+│   ├── completions/           # Stop conditions
+│   ├── work/                  # Loop type: implementation
+│   ├── improve-plan/          # Loop type: plan refinement
+│   ├── refine-beads/          # Loop type: bead refinement
+│   └── idea-wizard/           # Loop type: idea generation
 │
-├── loops/                 # Loop type definitions
-│   ├── work/              # Implementation from beads
-│   ├── improve-plan/      # Plan refinement
-│   ├── refine-beads/      # Bead refinement
-│   └── idea-wizard/       # Idea generation
-│
-└── pipelines/             # Multi-loop sequences
-    ├── quick-refine.yaml
-    ├── full-refine.yaml
-    └── deep-refine.yaml
+└── pipelines/                 # Pipeline engine + definitions
+    ├── run.sh                 # ./run.sh <pipeline.yaml> [session]
+    ├── lib/                   # Parsing, resolution, providers
+    ├── SCHEMA.md              # Pipeline schema reference
+    └── *.yaml                 # Pipeline definitions
 ```
 
 ### Loop Types
@@ -119,7 +115,7 @@ The orchestrator coordinates multi-stage pipelines with fan-out/fan-in:
 
 ```
 .claude/loop-agents/scripts/
-├── orchestrator/
+├── pipelines/
 │   ├── run.sh             # Pipeline runner
 │   ├── lib/               # Parsing, resolution, providers
 │   ├── templates/         # Example pipelines
@@ -127,10 +123,10 @@ The orchestrator coordinates multi-stage pipelines with fan-out/fan-in:
 ```
 
 **Pipeline capabilities:**
-- **Fan-out:** Run N times in parallel with different perspectives
-- **Fan-in:** Aggregate results from previous stage
+- **Fan-out:** Run N times with different perspectives, aggregate results
+- **Fan-in:** Next stage receives all outputs via `${INPUTS.stage-name}`
 - **Completion strategies:** `plateau`, `beads-empty`, or fixed runs
-- **Multi-provider:** Claude Code, Codex, Gemini
+- **Variable substitution:** `${SESSION}`, `${INDEX}`, `${PERSPECTIVE}`, `${OUTPUT}`, `${PROGRESS}`
 
 ```yaml
 # .claude/pipelines/code-review.yaml
@@ -138,7 +134,6 @@ name: code-review
 stages:
   - name: review
     runs: 4
-    parallel: true
     perspectives: [security, performance, clarity, testing]
     prompt: |
       Review from ${PERSPECTIVE} perspective.
@@ -151,18 +146,7 @@ stages:
       Write to ${OUTPUT}
 ```
 
-### Legacy Pipelines
-
-Chain multiple loops in sequence (simpler, for refinement):
-
-```yaml
-# pipelines/full-refine.yaml
-steps:
-  - loop: improve-plan
-    max: 5
-  - loop: refine-beads
-    max: 5
-```
+> **Note:** Runs execute sequentially. `parallel: true` is a schema hint for future implementation.
 
 ## Workflow
 

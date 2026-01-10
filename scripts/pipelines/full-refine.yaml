@@ -4,9 +4,11 @@
 name: full-refine
 description: Complete planning refinement - plan first, then beads
 
-steps:
-  - loop: improve-plan
-    max: 5
+stages:
+  - name: improve-plan
+    loop: improve-plan
+    runs: 5
 
-  - loop: refine-beads
-    max: 5
+  - name: refine-beads
+    loop: refine-beads
+    runs: 5

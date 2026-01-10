@@ -1,6 +1,6 @@
 ---
 name: create-loop
-description: Create new loop agent types for the loop-engine. Scaffolds loop.yaml config and prompt.md files with the right completion strategy.
+description: Create new loop agent types for the loops. Scaffolds loop.yaml config and prompt.md files with the right completion strategy.
 ---
 
 <essential_principles>
@@ -165,10 +165,10 @@ Files:
   scripts/loops/{name}/prompt.md
 
 Run it:
-  .claude/loop-agents/scripts/loop-engine/run.sh {name} [session] [max]
+  .claude/loop-agents/scripts/loops/run.sh {name} [session] [max]
 
 Test first:
-  .claude/loop-agents/scripts/loop-engine/run.sh {name} test 1
+  .claude/loop-agents/scripts/loops/run.sh {name} test 1
 ```
 
 </process>

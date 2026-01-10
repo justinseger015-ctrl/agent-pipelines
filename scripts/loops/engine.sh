@@ -11,7 +11,7 @@ MAX_ITERATIONS=${3:-25}
 # Paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(pwd)"
-LOOPS_DIR="$SCRIPT_DIR/../loops"
+LOOPS_DIR="$SCRIPT_DIR"
 
 # Verify environment
 if [ ! -d "$LOOPS_DIR" ]; then
@@ -68,6 +68,7 @@ echo "════════════════════════�
 echo "  Loop Engine: $LOOP_TYPE"
 echo "  Session: $SESSION_NAME"
 echo "  Max iterations: $MAX_ITERATIONS"
+echo "  Model: ${MODEL:-opus}"
 echo "  Completion: ${COMPLETION:-beads-empty}"
 echo "═══════════════════════════════════════"
 echo ""
@@ -109,9 +110,23 @@ for i in $(seq 1 $MAX_ITERATIONS); do
   # Run Claude with substituted prompt
   PROMPT_CONTENT=$(substitute_prompt "$PROMPT_FILE" "$SESSION_NAME" "$PROGRESS_FILE" "$EXTRA_VARS")
 
+  # Use model from config, default to opus
+  LOOP_MODEL="${MODEL:-opus}"
+
+  # Execute Claude and capture output + exit code
+  set +e
   OUTPUT=$(echo "$PROMPT_CONTENT" \
-    | claude --model opus --dangerously-skip-permissions 2>&1 \
-    | tee /dev/stderr) || true
+    | claude --model "$LOOP_MODEL" --dangerously-skip-permissions 2>&1 \
+    | tee /dev/stderr)
+  CLAUDE_EXIT=$?
+  set -e
+
+  if [ $CLAUDE_EXIT -ne 0 ]; then
+    echo ""
+    echo "⚠️  Claude exited with code $CLAUDE_EXIT"
+    echo "   Continuing to next iteration..."
+    echo ""
+  fi
 
   # Parse output based on config
   OUTPUT_JSON="{}"

@@ -4,9 +4,11 @@
 name: quick-refine
 description: Quick planning refinement (fewer iterations)
 
-steps:
-  - loop: improve-plan
-    max: 3
+stages:
+  - name: improve-plan
+    loop: improve-plan
+    runs: 3
 
-  - loop: refine-beads
-    max: 3
+  - name: refine-beads
+    loop: refine-beads
+    runs: 3

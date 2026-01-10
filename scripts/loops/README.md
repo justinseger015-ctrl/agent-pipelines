@@ -6,19 +6,19 @@ Universal loop runner for autonomous agent tasks. Create any iterative workflow 
 
 ```bash
 # Run a loop
-./scripts/loop-engine/run.sh work auth 25       # Work loop, "auth" session, 25 max iterations
-./scripts/loop-engine/run.sh improve-plan my-session 5  # Plan refinement until plateau
-./scripts/loop-engine/run.sh refine-beads my-session 5  # Bead refinement until plateau
+./scripts/loops/run.sh work auth 25       # Work loop, "auth" session, 25 max iterations
+./scripts/loops/run.sh improve-plan my-session 5  # Plan refinement until plateau
+./scripts/loops/run.sh refine-beads my-session 5  # Bead refinement until plateau
 
 # See available loops
-./scripts/loop-engine/run.sh
+./scripts/loops/run.sh
 ```
 
 ## Architecture
 
 ```
 scripts/
-├── loop-engine/
+├── loops/
 │   ├── engine.sh          # Core loop runner
 │   ├── run.sh             # Convenience wrapper
 │   ├── config.sh          # Config loader
@@ -84,7 +84,7 @@ SUMMARY: {text}
 
 3. Run it:
 ```bash
-./scripts/loop-engine/run.sh myloop session-name 10
+./scripts/loops/run.sh myloop session-name 10
 ```
 
 ## Completion Strategies

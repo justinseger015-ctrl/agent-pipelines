@@ -27,9 +27,12 @@ stages:
     model: opus            # Optional: Override default model
     provider: claude-code  # Optional: Override default provider
     completion: plateau    # Optional: Early-stop strategy
-    parallel: false        # Optional: Run iterations in parallel
+    parallel: false        # Optional: Hint for parallel execution (not yet implemented)
     perspectives: []       # Optional: Array of values for ${PERSPECTIVE}
-    prompt: |              # Required: The prompt template
+
+    # Prompt source - use ONE of these:
+    loop: loop-name        # Option A: Use existing loop type's prompt
+    prompt: |              # Option B: Define prompt inline
       Your instructions here...
 ```
 
@@ -47,6 +50,14 @@ Use these in your prompts - they're resolved at runtime:
 | `${INPUTS.stage-name}` | All outputs from named stage | File contents |
 | `${INPUTS}` | Outputs from previous stage | File contents |
 
+**Loop-style variables** (for compatibility when using `loop:`):
+
+| Variable | Maps To |
+|----------|---------|
+| `${SESSION_NAME}` | `${SESSION}` |
+| `${ITERATION}` | `${INDEX}` + 1 (1-based) |
+| `${PROGRESS_FILE}` | `${PROGRESS}` |
+
 ## Completion Strategies
 
 - **none** (default): Run exactly `runs` times
@@ -63,6 +74,20 @@ Use these in your prompts - they're resolved at runtime:
 
 ## Examples
 
+### Using Existing Loop Types
+
+```yaml
+name: full-refine
+stages:
+  - name: improve-plan
+    loop: improve-plan    # Uses loops/improve-plan/prompt.md
+    runs: 5               # Inherits completion: plateau from loop
+
+  - name: refine-beads
+    loop: refine-beads
+    runs: 5
+```
+
 ### Simple One-Shot
 
 ```yaml
@@ -77,12 +102,14 @@ stages:
 
 ### Fan-Out and Fan-In
 
+> Note: `parallel: true` is a schema hint for future parallel execution.
+> Currently, runs execute sequentially but outputs are still aggregated correctly.
+
 ```yaml
 name: multi-review
 stages:
   - name: review
     runs: 4
-    parallel: true
     perspectives:
       - security
       - performance

@@ -164,13 +164,13 @@ For complex workflows, use pipelines:
 PLUGIN_DIR=".claude/loop-agents"
 
 # Quick refine then work
-$PLUGIN_DIR/scripts/loop-engine/pipeline.sh quick-refine session-name
-$PLUGIN_DIR/scripts/loop-engine/run.sh work session-name 20
+$PLUGIN_DIR/scripts/pipelines/run.sh $PLUGIN_DIR/scripts/pipelines/quick-refine.yaml session-name
+$PLUGIN_DIR/scripts/loops/run.sh work session-name 20
 
 # Full quality pipeline
-$PLUGIN_DIR/scripts/loop-engine/pipeline.sh deep-refine session-name
-$PLUGIN_DIR/scripts/loop-engine/run.sh review session-name 9
-$PLUGIN_DIR/scripts/loop-engine/run.sh work session-name 30
+$PLUGIN_DIR/scripts/pipelines/run.sh $PLUGIN_DIR/scripts/pipelines/deep-refine.yaml session-name
+$PLUGIN_DIR/scripts/loops/run.sh review session-name 9
+$PLUGIN_DIR/scripts/loops/run.sh work session-name 30
 ```
 
 ### Available Pipelines
