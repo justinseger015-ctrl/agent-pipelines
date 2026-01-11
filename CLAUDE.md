@@ -8,26 +8,29 @@ Loop Agents is a [Ralph loop](https://ghuntley.com/ralph/) orchestrator for Clau
 
 **Core philosophy:** Fresh agent per iteration prevents context degradation. Two-agent consensus prevents premature stopping. Planning tokens are cheaper than implementation tokens.
 
+**Everything is a pipeline.** A "loop" is just a single-stage pipeline. The unified engine treats all executions the same way.
+
 ## Commands
 
 ```bash
-# Run a loop directly
-./scripts/run.sh loop work auth 25        # work loop, session "auth", max 25 iterations
-./scripts/run.sh loop improve-plan my-session 5
+# Run a single-stage pipeline (3 equivalent ways)
+./scripts/run.sh work auth 25                    # Shortcut: type session max
+./scripts/run.sh loop work auth 25               # Explicit: loop type session max
+./scripts/run.sh pipeline --single-stage work auth 25  # Engine syntax
 
-# Run a pipeline (chains loops together)
+# Run a multi-stage pipeline
 ./scripts/run.sh pipeline full-refine.yaml my-session
 
 # Force start (override existing session lock)
-./scripts/run.sh loop work auth 25 --force
+./scripts/run.sh work auth 25 --force
 
 # Resume a crashed/failed session
-./scripts/run.sh loop work auth 25 --resume
+./scripts/run.sh work auth 25 --resume
 
 # Check session status
 ./scripts/run.sh status auth
 
-# List available loops/pipelines
+# List available stages and pipelines
 ./scripts/run.sh
 ```
 
@@ -39,11 +42,11 @@ Skills are Claude Code extensions in `skills/`. Each provides specialized workfl
 
 | Skill | Invocation | Purpose |
 |-------|------------|---------|
-| **sessions** | `/loop-agents:sessions` | Start/manage loops and pipelines in tmux |
+| **sessions** | `/loop-agents:sessions` | Start/manage pipelines in tmux |
 | **plan-refinery** | `/plan-refinery` | Iterative planning with Opus subagents |
 | **create-prd** | `/loop-agents:create-prd` | Generate PRDs through adaptive questioning |
 | **create-tasks** | `/loop-agents:create-tasks` | Break PRD into executable beads |
-| **pipeline-builder** | `/loop-agents:pipeline-builder` | Create custom loops and pipelines |
+| **pipeline-builder** | `/loop-agents:pipeline-builder` | Create custom stages and pipelines |
 
 ### Skill Structure
 
@@ -59,16 +62,18 @@ Commands in `commands/` provide user-facing interfaces.
 | Command | Usage | Description |
 |---------|-------|-------------|
 | `/loop` | `/loop`, `/loop status`, `/loop attach NAME` | Orchestration hub: plan, status, management |
-| `/work` | `/work`, `/work auth` | Launch implementation loops |
+| `/work` | `/work`, `/work auth` | Launch work pipelines |
 | `/refine` | `/refine`, `/refine quick`, `/refine deep` | Run refinement pipelines |
 | `/ideate` | `/ideate`, `/ideate 3` | Generate improvement ideas |
 
 ## Architecture
 
+**Everything is a pipeline.** The unified engine (`engine.sh`) runs all sessions the same way. A single-stage pipeline is what we colloquially call a "loop."
+
 ```
 scripts/
-├── engine.sh                 # Unified orchestrator (loops + pipelines)
-├── run.sh                    # Entry point wrapper
+├── engine.sh                 # Unified pipeline engine
+├── run.sh                    # Entry point (converts all commands to pipeline calls)
 ├── lib/                      # Shared utilities
 │   ├── yaml.sh               # YAML→JSON conversion
 │   ├── state.sh              # JSON iteration history + crash recovery
@@ -83,12 +88,12 @@ scripts/
 │       ├── plateau.sh        # Stop when 2 agents agree
 │       ├── fixed-n.sh        # Stop after N iterations
 │       └── all-items.sh      # Stop after processing items
-├── loops/                    # Loop type definitions
+├── loops/                    # Stage definitions (single-stage pipeline configs)
 │   ├── work/                 # Implementation (beads-empty)
 │   ├── improve-plan/         # Plan refinement (plateau)
 │   ├── refine-beads/         # Bead refinement (plateau)
 │   └── idea-wizard/          # Ideation (fixed-n)
-└── pipelines/                # Multi-stage workflows
+└── pipelines/                # Multi-stage pipeline configs
     └── *.yaml
 
 skills/                       # Claude Code skill extensions
@@ -97,9 +102,18 @@ commands/                     # Slash command documentation
 
 ## Core Concepts
 
-### Loops
+### Pipelines
 
-A loop = prompt template + completion strategy. Each iteration:
+**Everything is a pipeline.** A pipeline runs one or more stages, each with its own prompt and completion strategy.
+
+- **Single-stage pipeline** (aka "loop"): One stage that iterates until completion
+- **Multi-stage pipeline**: Multiple stages chained together, outputs flow between stages
+
+All sessions run in `.claude/pipeline-runs/{session}/` with unified state tracking.
+
+### Stages
+
+A stage = prompt template + completion strategy. Stages are defined in `scripts/loops/{name}/`. Each iteration:
 1. Resolves template variables (`${SESSION}`, `${ITERATION}`, `${PROGRESS_FILE}`, etc.)
 2. Executes Claude with resolved prompt
 3. Parses output for structured fields
@@ -137,15 +151,17 @@ A loop = prompt template + completion strategy. Each iteration:
 
 | Strategy | Implementation | Used By |
 |----------|----------------|---------|
-| `beads-empty` | Checks `bd ready --label=loop/{session}` returns 0 | work loop |
+| `beads-empty` | Checks `bd ready --label=loop/{session}` returns 0 | work stage |
 | `plateau` | Requires 2 consecutive agents to output `PLATEAU: true` | improve-plan, refine-beads |
 | `fixed-n` | Runs exactly N iterations | idea-wizard |
 | `all-items` | Processes each item in a list | batch processing |
 
-### Pipelines
+### Multi-Stage Pipelines
 
-Chain loops together. Each stage's outputs become `${INPUTS}` for the next:
+Chain stages together. Each stage's outputs become `${INPUTS}` for the next:
 ```yaml
+name: full-refine
+description: Refine plan then beads
 stages:
   - name: plan
     loop: improve-plan
@@ -165,32 +181,34 @@ Available pipelines: `quick-refine.yaml` (3+3), `full-refine.yaml` (5+5), `deep-
 | `${ITERATION}` | 1-based iteration number |
 | `${INDEX}` | 0-based iteration index |
 | `${PROGRESS}` / `${PROGRESS_FILE}` | Path to progress file |
-| `${OUTPUT}` | Path to write output (pipelines) |
-| `${INPUTS}` | Previous stage outputs (pipelines) |
-| `${INPUTS.stage-name}` | Named stage outputs (pipelines) |
+| `${OUTPUT}` | Path to write output (multi-stage pipelines) |
+| `${INPUTS}` | Previous stage outputs (multi-stage pipelines) |
+| `${INPUTS.stage-name}` | Named stage outputs (multi-stage pipelines) |
 
-## Creating a New Loop
+## Creating a New Stage
+
+Stages are single-stage pipeline definitions. Create one to add a new pipeline type.
 
 1. Create directory: `scripts/loops/{name}/`
 2. Add `loop.yaml`:
 ```yaml
-name: my-loop
-description: What this loop does
+name: my-stage
+description: What this stage does
 completion: plateau      # beads-empty, plateau, fixed-n, all-items
 delay: 3                 # seconds between iterations
-min_iterations: 2        # for plateau: don't check before this
+min_iterations: 1        # for plateau: start checking after this many
 output_parse: plateau:PLATEAU reasoning:REASONING  # extract from output
 ```
 3. Add `prompt.md` with template using variables above
-4. Run verification with `/loop-agents:pipeline-builder`
+4. Run verification: `./scripts/run.sh lint loop {name}`
 
 ## Recommended Workflow
 
 **Feature implementation flow:**
 1. `/loop plan` or `/loop-agents:create-prd` → Gather requirements, save to `docs/plans/`
 2. `/loop-agents:create-tasks` → Break PRD into beads tagged `loop/{session}`
-3. `/refine` → Improve plan and beads (default: 5+5 iterations)
-4. `/work` → Autonomous implementation until all beads complete
+3. `/refine` → Run refinement pipeline (default: 5+5 iterations)
+4. `/work` → Run work pipeline until all beads complete
 
 ## Key Patterns
 
@@ -198,17 +216,17 @@ output_parse: plateau:PLATEAU reasoning:REASONING  # extract from output
 
 **Two-agent consensus** (plateau): Prevents single-agent blind spots. Both must independently confirm completion.
 
-**Beads integration**: Work loop uses `bd` CLI to list/claim/close tasks. Beads are tagged with `loop/{session}`.
+**Beads integration**: Work stage uses `bd` CLI to list/claim/close tasks. Beads are tagged with `loop/{session}`.
 
 **Session isolation**: Each session has separate beads (`loop/{session}` label), progress file, state file, and tmux session.
 
 ## Debugging
 
 ```bash
-# Watch a running loop
+# Watch a running pipeline
 tmux attach -t loop-{session}
 
-# Check loop state
+# Check pipeline state
 cat .claude/pipeline-runs/{session}/state.json | jq
 
 # View progress file
@@ -217,7 +235,7 @@ cat .claude/pipeline-runs/{session}/progress-{session}.md
 # Check remaining beads
 bd ready --label=loop/{session}
 
-# Kill a stuck loop
+# Kill a stuck pipeline
 tmux kill-session -t loop-{session}
 
 # Check session status (active, failed, completed)
@@ -238,7 +256,7 @@ Run with --resume to continue from iteration 5
 
 **To resume:**
 ```bash
-./scripts/run.sh loop work auth 25 --resume
+./scripts/run.sh work auth 25 --resume
 ```
 
 **How crash detection works:**
@@ -264,7 +282,7 @@ test -f .claude/locks/{session}.lock && echo "locked" || echo "available"
 rm .claude/locks/{session}.lock
 
 # Force start despite existing lock
-./scripts/run.sh loop work my-session 10 --force
+./scripts/run.sh work my-session 10 --force
 ```
 
 **When you see "Session is already running":**
@@ -274,7 +292,7 @@ rm .claude/locks/{session}.lock
 
 ## Environment Variables
 
-Loops export:
-- `CLAUDE_LOOP_AGENT=1` - Always true inside a loop
+Pipelines export:
+- `CLAUDE_LOOP_AGENT=1` - Always true inside a pipeline
 - `CLAUDE_LOOP_SESSION` - Current session name
-- `CLAUDE_LOOP_TYPE` - Current loop type
+- `CLAUDE_LOOP_TYPE` - Current stage type
