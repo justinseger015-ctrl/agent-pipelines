@@ -1,0 +1,9 @@
+# Elegance Stage - Deep exploration for simplicity and elegance
+# Agent explores freely with subagents, plateaus when nothing new to find
+
+name: elegance
+description: Explore codebase for elegance opportunities—what to simplify, remove, or recast
+completion: plateau
+min_iterations: 3
+delay: 3
+output_parse: "plateau:PLATEAU reasoning:REASONING"
