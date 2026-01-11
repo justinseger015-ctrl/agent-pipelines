@@ -412,8 +412,9 @@ dry_run_loop() {
   echo ""
   echo "| Purpose | Path |"
   echo "|---------|------|"
-  echo "| State file | .claude/state.json |"
-  echo "| Progress file | .claude/loop-progress/progress-${session}.txt |"
+  echo "| Run directory | .claude/pipeline-runs/${session}/ |"
+  echo "| State file | .claude/pipeline-runs/${session}/state.json |"
+  echo "| Progress file | .claude/pipeline-runs/${session}/progress-${session}.md |"
   echo "| Lock file | .claude/locks/${session}.lock |"
   echo ""
 
@@ -428,7 +429,7 @@ dry_run_loop() {
   "session": "$session",
   "iteration": "1",
   "index": "0",
-  "progress": ".claude/loop-progress/progress-${session}.txt"
+  "progress": ".claude/pipeline-runs/${session}/progress-${session}.md"
 }
 EOF
 )

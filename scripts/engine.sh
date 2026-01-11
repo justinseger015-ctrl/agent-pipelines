@@ -1,14 +1,18 @@
 #!/bin/bash
 set -e
 
-# Unified Loop/Pipeline Engine
-# Runs single-stage loops or multi-stage pipelines
+# Unified Pipeline Engine
+# Everything is a pipeline. A "loop" is just a single-stage pipeline.
+#
+# All sessions run in: .claude/pipeline-runs/{session}/
+# Each session gets: state.json, progress files, stage directories
 #
 # Usage:
-#   engine.sh stage <stage_type> [session] [max_iterations]  # Run single stage
 #   engine.sh pipeline <pipeline.yaml> [session]              # Run multi-stage pipeline
+#   engine.sh pipeline --single-stage <type> [session] [max]  # Run single-loop pipeline
+#   engine.sh status <session>                                # Check session status
 
-MODE=${1:?"Usage: engine.sh <loop|pipeline> <type_or_file> [session] [max_iterations]"}
+MODE=${1:?"Usage: engine.sh <pipeline|status> <args>"}
 shift
 
 # Paths
@@ -433,9 +437,10 @@ set -- "${ARGS[@]}"
 cleanup_stale_locks
 
 # Helper function to get state file path for a session
+# All sessions now use pipeline-runs directory
 get_state_file_path() {
   local session=$1
-  local run_dir="${PROJECT_ROOT}/.claude"
+  local run_dir="${PROJECT_ROOT}/.claude/pipeline-runs/$session"
   echo "$run_dir/state.json"
 }
 
@@ -480,45 +485,23 @@ check_failed_session() {
 }
 
 case "$MODE" in
-  loop)
-    LOOP_TYPE=${1:?"Usage: engine.sh loop <stage_type> [session] [max_iterations] [--force] [--resume]"}
-    SESSION=${2:-"$LOOP_TYPE"}
-    MAX_ITERATIONS=${3:-25}
-
-    # Determine run directory and state file
-    RUN_DIR="${PROJECT_ROOT}/.claude"
-    STATE_FILE="$RUN_DIR/state.json"
-
-    # Check for existing/failed session
-    check_failed_session "$SESSION" "$STATE_FILE" "$MAX_ITERATIONS"
-
-    # Determine start iteration
-    START_ITERATION=1
-    if [ "$RESUME_FLAG" = "--resume" ] && [ -f "$STATE_FILE" ]; then
-      START_ITERATION=$(get_resume_iteration "$STATE_FILE")
-      reset_for_resume "$STATE_FILE"
-      echo "Resuming session '$SESSION' from iteration $START_ITERATION"
-    fi
-
-    # Acquire lock before starting
-    if ! acquire_lock "$SESSION" "$FORCE_FLAG"; then
-      exit 1
-    fi
-
-    # Ensure lock is released on exit
-    trap 'release_lock "$SESSION"' EXIT
-
-    run_stage "$LOOP_TYPE" "$SESSION" "$MAX_ITERATIONS" "$RUN_DIR" "0" "$START_ITERATION"
-    ;;
-
   pipeline)
-    PIPELINE_FILE=${1:?"Usage: engine.sh pipeline <pipeline.yaml> [session] [--force] [--resume]"}
-    SESSION=$2
-
-    # For pipelines, derive session name if not provided
-    if [ -z "$SESSION" ]; then
-      pipeline_json=$(yaml_to_json "$PIPELINE_FILE" 2>/dev/null || echo "{}")
-      SESSION=$(json_get "$pipeline_json" ".name" "pipeline")-$(date +%Y%m%d-%H%M%S)
+    # Check for --single-stage flag (used by run.sh loop shortcut)
+    SINGLE_STAGE=""
+    if [ "$1" = "--single-stage" ]; then
+      SINGLE_STAGE="true"
+      shift
+      LOOP_TYPE=${1:?"Usage: engine.sh pipeline --single-stage <loop-type> [session] [max]"}
+      SESSION=${2:-"$LOOP_TYPE"}
+      MAX_ITERATIONS=${3:-25}
+    else
+      PIPELINE_FILE=${1:?"Usage: engine.sh pipeline <pipeline.yaml> [session] [--force] [--resume]"}
+      SESSION=$2
+      # For pipelines, derive session name if not provided
+      if [ -z "$SESSION" ]; then
+        pipeline_json=$(yaml_to_json "$PIPELINE_FILE" 2>/dev/null || echo "{}")
+        SESSION=$(json_get "$pipeline_json" ".name" "pipeline")-$(date +%Y%m%d-%H%M%S)
+      fi
     fi
 
     # Determine run directory and state file for pipeline
@@ -527,18 +510,18 @@ case "$MODE" in
 
     # Check for existing/failed session (only if state file exists)
     if [ -f "$STATE_FILE" ]; then
-      check_failed_session "$SESSION" "$STATE_FILE" "?"
+      check_failed_session "$SESSION" "$STATE_FILE" "${MAX_ITERATIONS:-?}"
     fi
 
-    # Resume for pipelines is more complex - show warning
+    # Determine start iteration for resume
+    START_ITERATION=1
     if [ "$RESUME_FLAG" = "--resume" ]; then
       if [ -f "$STATE_FILE" ]; then
-        echo "Warning: Pipeline resume support is limited."
-        echo "The pipeline will restart from the beginning."
-        echo "Previous state will be preserved in: $RUN_DIR"
-        echo ""
+        START_ITERATION=$(get_resume_iteration "$STATE_FILE")
+        reset_for_resume "$STATE_FILE"
+        echo "Resuming session '$SESSION' from iteration $START_ITERATION"
       else
-        echo "Error: Cannot resume - no previous pipeline session '$SESSION' found."
+        echo "Error: Cannot resume - no previous session '$SESSION' found."
         exit 1
       fi
     fi
@@ -551,18 +534,26 @@ case "$MODE" in
     # Ensure lock is released on exit (success, error, or signal)
     trap 'release_lock "$SESSION"' EXIT
 
-    run_pipeline "$PIPELINE_FILE" "$SESSION"
+    if [ "$SINGLE_STAGE" = "true" ]; then
+      # Single-stage pipeline: run the loop directly using run_stage
+      mkdir -p "$RUN_DIR"
+      run_stage "$LOOP_TYPE" "$SESSION" "$MAX_ITERATIONS" "$RUN_DIR" "0" "$START_ITERATION"
+    else
+      run_pipeline "$PIPELINE_FILE" "$SESSION"
+    fi
     ;;
 
   status)
     # Show status of a session
     SESSION=${1:?"Usage: engine.sh status <session>"}
     STATE_FILE=$(get_state_file_path "$SESSION")
+    RUN_DIR="$PROJECT_ROOT/.claude/pipeline-runs/$SESSION"
 
     status=$(get_session_status "$SESSION" "$STATE_FILE")
     echo "Session: $SESSION"
     echo "Status: $status"
     echo "$SESSION_STATUS_DETAILS"
+    echo "Run dir: $RUN_DIR"
 
     if [ "$status" = "failed" ]; then
       get_crash_info "$SESSION" "$STATE_FILE"
@@ -570,25 +561,26 @@ case "$MODE" in
       echo "Last iteration started: $CRASH_LAST_ITERATION"
       echo "Last iteration completed: $CRASH_LAST_COMPLETED"
       [ -n "$CRASH_ERROR" ] && echo "Error: $CRASH_ERROR"
+      echo ""
+      echo "To resume: ./scripts/run.sh loop <type> $SESSION <max> --resume"
     fi
     ;;
 
   *)
-    echo "Usage: engine.sh <loop|pipeline|status> <type_or_file> [session] [max_iterations] [--force] [--resume]"
+    echo "Usage: engine.sh <pipeline|status> <args>"
+    echo ""
+    echo "Everything is a pipeline. Use run.sh for the user-friendly interface."
     echo ""
     echo "Modes:"
-    echo "  loop <type> [session] [max]  - Run a loop"
-    echo "  pipeline <file> [session]     - Run a multi-stage pipeline"
-    echo "  status <session>              - Check session status"
+    echo "  pipeline <file.yaml> [session]              - Run a multi-stage pipeline"
+    echo "  pipeline --single-stage <type> [session] [max] - Run a single-loop pipeline"
+    echo "  status <session>                            - Check session status"
     echo ""
     echo "Options:"
     echo "  --force    Override existing session lock"
     echo "  --resume   Resume a failed/crashed session"
     echo ""
-    echo "Available loops:"
-    ls "$LOOPS_DIR" 2>/dev/null | while read d; do
-      [ -d "$LOOPS_DIR/$d" ] && echo "  $d"
-    done
+    echo "All sessions run in: .claude/pipeline-runs/{session}/"
     exit 1
     ;;
 esac
