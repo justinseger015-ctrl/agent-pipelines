@@ -33,7 +33,7 @@ tmux list-sessions 2>/dev/null | grep -E "^loop-"
 
 **Peek at output:**
 ```bash
-tmux capture-pane -t loop-{session} -p | tail -50
+tmux capture-pane -t pipeline-{session} -p | tail -50
 ```
 
 ## Session Types
@@ -51,7 +51,7 @@ Each session creates:
 - **Lock file:** `.claude/locks/{session}.lock`
 - **State file:** `.claude/pipeline-runs/{session}/state.json`
 - **Progress file:** `.claude/pipeline-runs/{session}/progress-{session}.md`
-- **tmux session:** `loop-{session}`
+- **tmux session:** `pipeline-{session}`
 
 ## Crash Recovery
 
@@ -78,7 +78,7 @@ Handle stale resources:
 rm .claude/locks/{session}.lock
 
 # Manual: kill orphaned tmux
-tmux kill-session -t loop-{session}
+tmux kill-session -t pipeline-{session}
 ```
 
 ---

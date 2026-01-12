@@ -39,7 +39,7 @@ This returns one of:
 
 ```bash
 # Check all three resources
-has_tmux=$(tmux has-session -t "loop-${session}" 2>/dev/null && echo "yes" || echo "no")
+has_tmux=$(tmux has-session -t "pipeline-${session}" 2>/dev/null && echo "yes" || echo "no")
 has_lock=$(test -f ".claude/locks/${session}.lock" && echo "yes" || echo "no")
 has_state=$(test -f ".claude/pipeline-runs/${session}/state.json" && echo "yes" || echo "no")
 
@@ -90,9 +90,9 @@ Files:
 
 ```bash
 if [ "$loop_type" = "work" ]; then
-    remaining=$(bd ready --label="loop/${session}" 2>/dev/null | wc -l)
-    in_progress=$(bd list --label="loop/${session}" --status=in_progress 2>/dev/null | wc -l)
-    completed=$(bd list --label="loop/${session}" --status=closed 2>/dev/null | wc -l)
+    remaining=$(bd ready --label="pipeline/${session}" 2>/dev/null | wc -l)
+    in_progress=$(bd list --label="pipeline/${session}" --status=in_progress 2>/dev/null | wc -l)
+    completed=$(bd list --label="pipeline/${session}" --status=closed 2>/dev/null | wc -l)
 
     echo "Beads:"
     echo "  Completed:   ${completed}"
@@ -121,9 +121,9 @@ fi
 ### If Running
 ```
 Actions:
-  • Monitor: tmux capture-pane -t loop-${session} -p | tail -50
-  • Attach:  tmux attach -t loop-${session}
-  • Kill:    tmux kill-session -t loop-${session}
+  • Monitor: tmux capture-pane -t pipeline-${session} -p | tail -50
+  • Attach:  tmux attach -t pipeline-${session}
+  • Kill:    tmux kill-session -t pipeline-${session}
 ```
 
 ### If Crashed
@@ -135,7 +135,7 @@ Can resume from iteration: 5
 
 Actions:
   • Resume: ./scripts/run.sh work ${session} 25 --resume
-  • Cleanup: /loop-agents:sessions cleanup
+  • Cleanup: /agent-pipelines:sessions cleanup
   • View progress: cat .claude/pipeline-runs/${session}/progress-${session}.md
 ```
 
@@ -152,7 +152,7 @@ Results:
 
 Actions:
   • View results: cat .claude/pipeline-runs/${session}/progress-${session}.md
-  • Start new: /loop-agents:sessions start
+  • Start new: /agent-pipelines:sessions start
 ```
 
 ### If Failed

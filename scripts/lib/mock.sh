@@ -6,7 +6,7 @@
 #
 # Usage:
 #   source "$LIB_DIR/mock.sh"
-#   enable_mock_mode "scripts/loops/work/fixtures"
+#   enable_mock_mode "scripts/stages/work/fixtures"
 #   response=$(get_mock_response 1)
 #
 # Fixture structure:
@@ -198,7 +198,7 @@ write_mock_status() {
 # Usage: list_fixtures "work"
 list_fixtures() {
   local loop_name=$1
-  local fixtures_dir="${SCRIPT_DIR:-scripts}/loops/$loop_name/fixtures"
+  local fixtures_dir="${SCRIPT_DIR:-scripts}/stages/$loop_name/fixtures"
 
   if [ ! -d "$fixtures_dir" ]; then
     echo "No fixtures directory for loop: $loop_name"
@@ -216,7 +216,7 @@ list_fixtures() {
 create_fixture_set() {
   local loop_name=$1
   local completion_type=${2:-"plateau"}
-  local fixtures_dir="${SCRIPT_DIR:-scripts}/loops/$loop_name/fixtures"
+  local fixtures_dir="${SCRIPT_DIR:-scripts}/stages/$loop_name/fixtures"
 
   mkdir -p "$fixtures_dir"
 
@@ -386,7 +386,7 @@ enable_record_mode() {
   local timestamp=$(date +%Y%m%d-%H%M%S)
 
   RECORD_MODE=true
-  RECORD_DIR="${SCRIPT_DIR:-scripts}/loops/$loop_name/fixtures/recorded/$timestamp"
+  RECORD_DIR="${SCRIPT_DIR:-scripts}/stages/$loop_name/fixtures/recorded/$timestamp"
   mkdir -p "$RECORD_DIR"
 
   echo "Recording to: $RECORD_DIR"

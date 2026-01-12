@@ -29,7 +29,7 @@ For each unique session found, determine status:
 
 ```bash
 for session in $(get_all_sessions); do
-    has_tmux=$(tmux has-session -t "loop-${session}" 2>/dev/null && echo "yes" || echo "no")
+    has_tmux=$(tmux has-session -t "pipeline-${session}" 2>/dev/null && echo "yes" || echo "no")
     has_lock=$(test -f ".claude/locks/${session}.lock" && echo "yes" || echo "no")
     has_state=$(test -f ".claude/pipeline-runs/${session}/state.json" && echo "yes" || echo "no")
 
@@ -115,23 +115,23 @@ Based on what was found:
 **If running sessions:**
 ```
 Actions:
-  • Monitor: /loop-agents:sessions monitor {name}
-  • Attach:  /loop-agents:sessions attach {name}
-  • Kill:    /loop-agents:sessions kill {name}
+  • Monitor: /agent-pipelines:sessions monitor {name}
+  • Attach:  /agent-pipelines:sessions attach {name}
+  • Kill:    /agent-pipelines:sessions kill {name}
 ```
 
 **If crashed/stale sessions:**
 ```
 Actions:
   • Resume:  ./scripts/run.sh {type} {name} {max} --resume
-  • Cleanup: /loop-agents:sessions cleanup
+  • Cleanup: /agent-pipelines:sessions cleanup
 ```
 
 **If completed sessions:**
 ```
 Actions:
   • View results: cat .claude/pipeline-runs/{name}/progress-{name}.md
-  • Start new:    /loop-agents:sessions start
+  • Start new:    /agent-pipelines:sessions start
 ```
 </process>
 

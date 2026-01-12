@@ -74,7 +74,7 @@ tmux list-sessions 2>/dev/null | grep -E "^loop-"
 
 **Check specific tmux session:**
 ```bash
-tmux has-session -t loop-{session} 2>/dev/null && echo "running" || echo "not running"
+tmux has-session -t pipeline-{session} 2>/dev/null && echo "running" || echo "not running"
 ```
 
 **View state file:**
@@ -99,17 +99,17 @@ kill -0 "$pid" 2>/dev/null && echo "alive" || echo "dead"
 
 **Peek at output (non-interactive):**
 ```bash
-tmux capture-pane -t loop-{session} -p | tail -50
+tmux capture-pane -t pipeline-{session} -p | tail -50
 ```
 
 **Capture full pane:**
 ```bash
-tmux capture-pane -t loop-{session} -p
+tmux capture-pane -t pipeline-{session} -p
 ```
 
 **Attach to watch live:**
 ```bash
-tmux attach -t loop-{session}
+tmux attach -t pipeline-{session}
 # Detach: Ctrl+b, then d
 ```
 </monitoring_commands>
@@ -119,7 +119,7 @@ tmux attach -t loop-{session}
 
 **Kill tmux session:**
 ```bash
-tmux kill-session -t loop-{session}
+tmux kill-session -t pipeline-{session}
 ```
 
 **Remove lock file:**
@@ -139,27 +139,27 @@ jq '.status = "killed"' .claude/pipeline-runs/{session}/state.json > /tmp/state.
 
 **Check remaining beads:**
 ```bash
-bd ready --label=loop/{session}
+bd ready --label=pipeline/{session}
 ```
 
 **Count remaining:**
 ```bash
-bd ready --label=loop/{session} | wc -l
+bd ready --label=pipeline/{session} | wc -l
 ```
 
 **List all session beads:**
 ```bash
-bd list --label=loop/{session}
+bd list --label=pipeline/{session}
 ```
 
 **List completed:**
 ```bash
-bd list --label=loop/{session} --status=closed
+bd list --label=pipeline/{session} --status=closed
 ```
 
 **List in progress:**
 ```bash
-bd list --label=loop/{session} --status=in_progress
+bd list --label=pipeline/{session} --status=in_progress
 ```
 </beads_commands>
 
@@ -234,7 +234,7 @@ bd list --label=loop/{session} --status=in_progress
 | Resource | Pattern | Example |
 |----------|---------|---------|
 | Session name | lowercase-hyphens | `auth`, `billing-refactor` |
-| tmux session | `loop-{session}` | `loop-auth` |
-| Beads label | `loop/{session}` | `loop/auth` |
+| tmux session | `pipeline-{session}` | `loop-auth` |
+| Beads label | `pipeline/{session}` | `pipeline/auth` |
 | Lock file | `{session}.lock` | `auth.lock` |
 </naming_conventions>

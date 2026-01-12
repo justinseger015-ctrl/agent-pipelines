@@ -100,9 +100,9 @@ Tell the user:
 ✅ PRD saved to: docs/plans/{filename}
 
 Next steps:
-- Review and refine: /loop-agents:refine
-- Generate tasks: /loop-agents:create-tasks
-- Or run full workflow: /loop-agents:loop
+- Review and refine: /agent-pipelines:refine
+- Generate tasks: /agent-pipelines:create-tasks
+- Or run full workflow: /agent-pipelines:loop
 ```
 
 ## Success Criteria

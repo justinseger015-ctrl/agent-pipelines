@@ -826,7 +826,7 @@ template:
 
   conventions:
     session_naming: "{ticket}-{feature}"
-    required_labels: ["loop/${feature}"]
+    required_labels: ["pipeline/${feature}"]
 ```
 
 Usage:

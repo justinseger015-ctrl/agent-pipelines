@@ -70,7 +70,7 @@ if [ -f ".claude/locks/${session}.lock" ]; then
 fi
 
 # Check for orphaned tmux session
-if tmux has-session -t "loop-${session}" 2>/dev/null; then
+if tmux has-session -t "pipeline-${session}" 2>/dev/null; then
     echo "tmux session exists"
     # Offer: attach, kill then restart
 fi
@@ -122,7 +122,7 @@ fi
 
 **For work sessions:** Check beads exist
 ```bash
-bd ready --label="loop/${session}" 2>/dev/null | head -3
+bd ready --label="pipeline/${session}" 2>/dev/null | head -3
 # If empty, warn user there are no beads to work on
 ```
 
@@ -130,13 +130,13 @@ bd ready --label="loop/${session}" 2>/dev/null | head -3
 
 **Single-stage (work, improve-plan, etc.):**
 ```bash
-tmux new-session -d -s "loop-${session}" -c "$(pwd)" \
+tmux new-session -d -s "pipeline-${session}" -c "$(pwd)" \
     "./scripts/run.sh ${stage} ${session} ${max_iterations}"
 ```
 
 **Multi-stage pipeline:**
 ```bash
-tmux new-session -d -s "loop-${session}" -c "$(pwd)" \
+tmux new-session -d -s "pipeline-${session}" -c "$(pwd)" \
     "./scripts/run.sh pipeline ${pipeline} ${session}"
 ```
 
@@ -156,7 +156,7 @@ tmux new-session -d -s "loop-${session}" -c "$(pwd)" \
 sleep 2
 
 # Verify tmux session exists
-if ! tmux has-session -t "loop-${session}" 2>/dev/null; then
+if ! tmux has-session -t "pipeline-${session}" 2>/dev/null; then
     echo "ERROR: Session failed to start"
     # Check for startup errors
     cat ".claude/pipeline-runs/${session}/state.json" 2>/dev/null | jq
@@ -185,9 +185,9 @@ Current status:
   Status: running
 
 Next actions:
-  • Monitor: tmux capture-pane -t loop-${session} -p | tail -50
-  • Attach:  tmux attach -t loop-${session}  (Ctrl+b, d to detach)
-  • Kill:    tmux kill-session -t loop-${session}
+  • Monitor: tmux capture-pane -t pipeline-${session} -p | tail -50
+  • Attach:  tmux attach -t pipeline-${session}  (Ctrl+b, d to detach)
+  • Kill:    tmux kill-session -t pipeline-${session}
   • Status:  ./scripts/run.sh status ${session}
 ```
 

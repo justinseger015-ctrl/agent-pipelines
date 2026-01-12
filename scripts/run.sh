@@ -33,8 +33,8 @@ show_help() {
   echo "  --resume                        Resume a crashed/failed session"
   echo "  --verbose                       Show detailed test output"
   echo ""
-  echo "Available loops:"
-  for dir in "$SCRIPT_DIR"/loops/*/; do
+  echo "Available stages:"
+  for dir in "$SCRIPT_DIR"/stages/*/; do
     [ -d "$dir" ] || continue
     name=$(basename "$dir")
     desc=$(grep "^description:" "$dir/loop.yaml" 2>/dev/null | cut -d: -f2- | sed 's/^[[:space:]]*//')
@@ -212,7 +212,7 @@ case "$1" in
   *)
     # Check if first arg is a valid loop type (shortcut syntax)
     # e.g., ./run.sh work auth 25 → same as ./run.sh loop work auth 25
-    if [ -d "$SCRIPT_DIR/loops/$1" ]; then
+    if [ -d "$SCRIPT_DIR/stages/$1" ]; then
       LOOP_TYPE=$1
       shift
       exec "$SCRIPT_DIR/engine.sh" pipeline --single-stage "$LOOP_TYPE" "$@"

@@ -192,7 +192,7 @@ Gates pause the pipeline and wait for user confirmation (desktop notification + 
 - `on_iteration_complete` - After each successful iteration
 - `on_session_complete` - When loop finishes (success or max reached)
 - `on_error` - When iteration fails
-Hooks defined in loop.yaml or `~/.config/loop-agents/hooks.sh`:
+Hooks defined in loop.yaml or `~/.config/agent-pipelines/hooks.sh`:
 ```yaml
 hooks:
   on_session_complete: "./scripts/notify-slack.sh ${SESSION}"
@@ -210,7 +210,7 @@ hooks:
 - `./scripts/run.sh notify setup slack` to configure webhook URL
 - Sends: session name, completion status, iteration count, duration, cost (if tracked)
 - Optional: send on each iteration for verbose monitoring
-- Store webhook URLs in `~/.config/loop-agents/webhooks.yaml`
+- Store webhook URLs in `~/.config/agent-pipelines/webhooks.yaml`
 
 **Why now:** Remote/async work is standard. Developers run loops and context-switch. Push notifications close the feedback loop without polling.
 

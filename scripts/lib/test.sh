@@ -314,7 +314,7 @@ reset_tests() {
 # Create a temporary directory for test isolation
 # Usage: tmp=$(create_test_dir)
 create_test_dir() {
-  local prefix=${1:-"loop-test"}
+  local prefix=${1:-"pipeline-test"}
   mktemp -d -t "${prefix}.XXXXXX"
 }
 

@@ -742,7 +742,7 @@ check_completion() {
     return 1  # Don't complete on error
   fi
 
-  local remaining=$(bd ready --label="loop/$session" 2>/dev/null | grep -c "^" || echo "0")
+  local remaining=$(bd ready --label="pipeline/$session" 2>/dev/null | grep -c "^" || echo "0")
 
   if [ "$remaining" -eq 0 ]; then
     echo "All beads complete"

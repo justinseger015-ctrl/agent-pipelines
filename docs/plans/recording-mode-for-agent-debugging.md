@@ -85,8 +85,8 @@ run.sh                    # Parse --record flag
 
 ```bash
 # Environment variables
-RECORD_MODE="${CLAUDE_LOOP_RECORD:-off}"
-RECORD_LEVEL="${CLAUDE_LOOP_RECORD_LEVEL:-standard}"
+RECORD_MODE="${CLAUDE_PIPELINE_RECORD:-off}"
+RECORD_LEVEL="${CLAUDE_PIPELINE_RECORD_LEVEL:-standard}"
 RECORD_DIR=""
 
 # Initialize recording for a session
@@ -184,11 +184,11 @@ is_recording() {
 ```bash
 # scripts/run.sh:~50 (after existing flag parsing)
 --record)
-  export CLAUDE_LOOP_RECORD=1
+  export CLAUDE_PIPELINE_RECORD=1
   shift
   ;;
 --record-level)
-  export CLAUDE_LOOP_RECORD_LEVEL="$2"
+  export CLAUDE_PIPELINE_RECORD_LEVEL="$2"
   shift 2
   ;;
 ```
@@ -218,7 +218,7 @@ record_response "$record_iter_dir" "$output_file" "$status_file" "$context_file"
 
 - [ ] `--record` flag added to run.sh, enables recording mode
 - [ ] `--record-level {minimal|standard|full}` configures detail level
-- [ ] `CLAUDE_LOOP_RECORD=1` environment variable enables recording
+- [ ] `CLAUDE_PIPELINE_RECORD=1` environment variable enables recording
 - [ ] Recordings saved to `.claude/recordings/{session}/` directory
 - [ ] Prompts captured before sending to Claude (full level)
 - [ ] Responses captured after receiving from Claude (full level)
@@ -264,20 +264,20 @@ source "$SCRIPT_DIR/lib/record.sh"
 #-------------------------------------------------------------------------------
 
 test_is_recording_false_by_default() {
-  unset CLAUDE_LOOP_RECORD
+  unset CLAUDE_PIPELINE_RECORD
   assert_false "$(is_recording && echo true || echo false)" "Recording off by default"
 }
 
 test_is_recording_enabled_with_env_var() {
-  export CLAUDE_LOOP_RECORD=1
-  assert_true "$(is_recording && echo true || echo false)" "Recording on with CLAUDE_LOOP_RECORD=1"
-  unset CLAUDE_LOOP_RECORD
+  export CLAUDE_PIPELINE_RECORD=1
+  assert_true "$(is_recording && echo true || echo false)" "Recording on with CLAUDE_PIPELINE_RECORD=1"
+  unset CLAUDE_PIPELINE_RECORD
 }
 
 test_is_recording_enabled_with_true() {
-  export CLAUDE_LOOP_RECORD=true
-  assert_true "$(is_recording && echo true || echo false)" "Recording on with CLAUDE_LOOP_RECORD=true"
-  unset CLAUDE_LOOP_RECORD
+  export CLAUDE_PIPELINE_RECORD=true
+  assert_true "$(is_recording && echo true || echo false)" "Recording on with CLAUDE_PIPELINE_RECORD=true"
+  unset CLAUDE_PIPELINE_RECORD
 }
 
 #-------------------------------------------------------------------------------
@@ -286,7 +286,7 @@ test_is_recording_enabled_with_true() {
 
 test_init_recording_creates_directory() {
   local test_dir=$(create_test_dir)
-  export CLAUDE_LOOP_RECORD=1
+  export CLAUDE_PIPELINE_RECORD=1
   export PROJECT_ROOT="$test_dir"
 
   init_recording "test-session"
@@ -294,12 +294,12 @@ test_init_recording_creates_directory() {
   assert_dir_exists "$test_dir/.claude/recordings/test-session" "Recording directory created"
 
   cleanup_test_dir "$test_dir"
-  unset CLAUDE_LOOP_RECORD PROJECT_ROOT
+  unset CLAUDE_PIPELINE_RECORD PROJECT_ROOT
 }
 
 test_init_recording_creates_manifest() {
   local test_dir=$(create_test_dir)
-  export CLAUDE_LOOP_RECORD=1
+  export CLAUDE_PIPELINE_RECORD=1
   export PROJECT_ROOT="$test_dir"
 
   init_recording "test-session"
@@ -310,12 +310,12 @@ test_init_recording_creates_manifest() {
   assert_json_field_exists "$manifest" ".started_at" "started_at field exists"
 
   cleanup_test_dir "$test_dir"
-  unset CLAUDE_LOOP_RECORD PROJECT_ROOT
+  unset CLAUDE_PIPELINE_RECORD PROJECT_ROOT
 }
 
 test_init_recording_noop_when_disabled() {
   local test_dir=$(create_test_dir)
-  unset CLAUDE_LOOP_RECORD
+  unset CLAUDE_PIPELINE_RECORD
   export PROJECT_ROOT="$test_dir"
 
   init_recording "test-session"
@@ -332,7 +332,7 @@ test_init_recording_noop_when_disabled() {
 
 test_record_iteration_start_creates_iter_dir() {
   local test_dir=$(create_test_dir)
-  export CLAUDE_LOOP_RECORD=1
+  export CLAUDE_PIPELINE_RECORD=1
   export PROJECT_ROOT="$test_dir"
 
   init_recording "test-session"
@@ -342,12 +342,12 @@ test_record_iteration_start_creates_iter_dir() {
   assert_contains "$iter_dir" "iterations/001" "Zero-padded iteration number"
 
   cleanup_test_dir "$test_dir"
-  unset CLAUDE_LOOP_RECORD PROJECT_ROOT
+  unset CLAUDE_PIPELINE_RECORD PROJECT_ROOT
 }
 
 test_record_iteration_start_creates_timing_json() {
   local test_dir=$(create_test_dir)
-  export CLAUDE_LOOP_RECORD=1
+  export CLAUDE_PIPELINE_RECORD=1
   export PROJECT_ROOT="$test_dir"
 
   init_recording "test-session"
@@ -357,7 +357,7 @@ test_record_iteration_start_creates_timing_json() {
   assert_json_field_exists "$iter_dir/timing.json" ".started_at" "started_at field exists"
 
   cleanup_test_dir "$test_dir"
-  unset CLAUDE_LOOP_RECORD PROJECT_ROOT
+  unset CLAUDE_PIPELINE_RECORD PROJECT_ROOT
 }
 
 #-------------------------------------------------------------------------------
@@ -366,8 +366,8 @@ test_record_iteration_start_creates_timing_json() {
 
 test_record_prompt_full_level() {
   local test_dir=$(create_test_dir)
-  export CLAUDE_LOOP_RECORD=1
-  export CLAUDE_LOOP_RECORD_LEVEL=full
+  export CLAUDE_PIPELINE_RECORD=1
+  export CLAUDE_PIPELINE_RECORD_LEVEL=full
   export PROJECT_ROOT="$test_dir"
 
   init_recording "test-session"
@@ -379,13 +379,13 @@ test_record_prompt_full_level() {
   assert_contains "$content" "test prompt content" "Prompt content saved"
 
   cleanup_test_dir "$test_dir"
-  unset CLAUDE_LOOP_RECORD CLAUDE_LOOP_RECORD_LEVEL PROJECT_ROOT
+  unset CLAUDE_PIPELINE_RECORD CLAUDE_PIPELINE_RECORD_LEVEL PROJECT_ROOT
 }
 
 test_record_prompt_standard_level_saves_hash() {
   local test_dir=$(create_test_dir)
-  export CLAUDE_LOOP_RECORD=1
-  export CLAUDE_LOOP_RECORD_LEVEL=standard
+  export CLAUDE_PIPELINE_RECORD=1
+  export CLAUDE_PIPELINE_RECORD_LEVEL=standard
   export PROJECT_ROOT="$test_dir"
 
   init_recording "test-session"
@@ -396,7 +396,7 @@ test_record_prompt_standard_level_saves_hash() {
   assert_json_field_exists "$iter_dir/timing.json" ".prompt_hash" "Hash saved in timing.json"
 
   cleanup_test_dir "$test_dir"
-  unset CLAUDE_LOOP_RECORD CLAUDE_LOOP_RECORD_LEVEL PROJECT_ROOT
+  unset CLAUDE_PIPELINE_RECORD CLAUDE_PIPELINE_RECORD_LEVEL PROJECT_ROOT
 }
 
 #-------------------------------------------------------------------------------
@@ -405,7 +405,7 @@ test_record_prompt_standard_level_saves_hash() {
 
 test_record_response_copies_status_and_context() {
   local test_dir=$(create_test_dir)
-  export CLAUDE_LOOP_RECORD=1
+  export CLAUDE_PIPELINE_RECORD=1
   export PROJECT_ROOT="$test_dir"
 
   init_recording "test-session"
@@ -426,12 +426,12 @@ test_record_response_copies_status_and_context() {
   assert_json_field "$iter_dir/timing.json" ".exit_code" "0" "exit_code recorded"
 
   cleanup_test_dir "$test_dir"
-  unset CLAUDE_LOOP_RECORD PROJECT_ROOT
+  unset CLAUDE_PIPELINE_RECORD PROJECT_ROOT
 }
 
 test_record_response_appends_to_trace() {
   local test_dir=$(create_test_dir)
-  export CLAUDE_LOOP_RECORD=1
+  export CLAUDE_PIPELINE_RECORD=1
   export PROJECT_ROOT="$test_dir"
 
   init_recording "test-session"
@@ -449,7 +449,7 @@ test_record_response_appends_to_trace() {
   assert_eq "2" "$trace_lines" "Two lines in trace.jsonl"
 
   cleanup_test_dir "$test_dir"
-  unset CLAUDE_LOOP_RECORD PROJECT_ROOT
+  unset CLAUDE_PIPELINE_RECORD PROJECT_ROOT
 }
 
 #-------------------------------------------------------------------------------
@@ -458,7 +458,7 @@ test_record_response_appends_to_trace() {
 
 test_recording_failure_does_not_break_session() {
   local test_dir=$(create_test_dir)
-  export CLAUDE_LOOP_RECORD=1
+  export CLAUDE_PIPELINE_RECORD=1
   export PROJECT_ROOT="$test_dir"
 
   init_recording "test-session"
@@ -478,7 +478,7 @@ test_recording_failure_does_not_break_session() {
   assert_eq "0" "0" "Script continued after recording failure"
 
   cleanup_test_dir "$test_dir"
-  unset CLAUDE_LOOP_RECORD PROJECT_ROOT
+  unset CLAUDE_PIPELINE_RECORD PROJECT_ROOT
 }
 
 #-------------------------------------------------------------------------------
@@ -487,7 +487,7 @@ test_recording_failure_does_not_break_session() {
 
 test_init_recording_resume_preserves_existing() {
   local test_dir=$(create_test_dir)
-  export CLAUDE_LOOP_RECORD=1
+  export CLAUDE_PIPELINE_RECORD=1
   export PROJECT_ROOT="$test_dir"
 
   # Create existing recording
@@ -500,12 +500,12 @@ test_init_recording_resume_preserves_existing() {
   assert_json_field "$test_dir/.claude/recordings/test-session/manifest.json" ".existing" "true" "Existing manifest preserved"
 
   cleanup_test_dir "$test_dir"
-  unset CLAUDE_LOOP_RECORD PROJECT_ROOT
+  unset CLAUDE_PIPELINE_RECORD PROJECT_ROOT
 }
 
 test_init_recording_force_moves_existing() {
   local test_dir=$(create_test_dir)
-  export CLAUDE_LOOP_RECORD=1
+  export CLAUDE_PIPELINE_RECORD=1
   export PROJECT_ROOT="$test_dir"
 
   # Create existing recording
@@ -523,7 +523,7 @@ test_init_recording_force_moves_existing() {
   assert_json_field_exists "$test_dir/.claude/recordings/test-session/manifest.json" ".started_at" "New manifest created"
 
   cleanup_test_dir "$test_dir"
-  unset CLAUDE_LOOP_RECORD PROJECT_ROOT
+  unset CLAUDE_PIPELINE_RECORD PROJECT_ROOT
 }
 
 #-------------------------------------------------------------------------------
@@ -589,16 +589,16 @@ test_summary
 Add to `scripts/tests/test_engine_integration.sh`:
 ```bash
 test_record_flag_enables_recording() {
-  # Test that --record flag sets CLAUDE_LOOP_RECORD=1
+  # Test that --record flag sets CLAUDE_PIPELINE_RECORD=1
   local output=$(./scripts/run.sh work test 1 --record --dry-run 2>&1)
-  assert_contains "$output" "CLAUDE_LOOP_RECORD=1" "Recording env var set"
+  assert_contains "$output" "CLAUDE_PIPELINE_RECORD=1" "Recording env var set"
 }
 ```
 
 **Step 2: Implement flag parsing**
 
 1. Add `--record` and `--record-level` to `run.sh`
-2. Export `CLAUDE_LOOP_RECORD` and `CLAUDE_LOOP_RECORD_LEVEL`
+2. Export `CLAUDE_PIPELINE_RECORD` and `CLAUDE_PIPELINE_RECORD_LEVEL`
 3. Pass to engine.sh
 
 **Files to modify:**
@@ -613,7 +613,7 @@ test_record_flag_enables_recording() {
 test_engine_records_iteration() {
   local test_dir=$(create_test_dir)
   export MOCK_MODE=true
-  export CLAUDE_LOOP_RECORD=1
+  export CLAUDE_PIPELINE_RECORD=1
   export PROJECT_ROOT="$test_dir"
 
   # Run 2-iteration session with mock

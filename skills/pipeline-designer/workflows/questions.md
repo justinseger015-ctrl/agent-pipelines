@@ -119,7 +119,7 @@ After answering, suggest relevant follow-ups:
 ```markdown
 **Next steps:**
 - `/pipeline` to design a new pipeline
-- `/loop-agents:sessions` to run an existing one
+- `/agent-pipelines:sessions` to run an existing one
 - Explore `scripts/loops/` for more examples
 ```
 

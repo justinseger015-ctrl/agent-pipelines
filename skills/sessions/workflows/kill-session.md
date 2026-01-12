@@ -81,8 +81,8 @@ fi
 # Check beads progress for work sessions
 loop_type=$(jq -r '.loop_type // ""' ".claude/pipeline-runs/${session}/state.json" 2>/dev/null)
 if [ "$loop_type" = "work" ]; then
-    remaining=$(bd ready --label="loop/${session}" 2>/dev/null | wc -l)
-    completed=$(bd list --label="loop/${session}" --status=closed 2>/dev/null | wc -l)
+    remaining=$(bd ready --label="pipeline/${session}" 2>/dev/null | wc -l)
+    completed=$(bd list --label="pipeline/${session}" --status=closed 2>/dev/null | wc -l)
     echo ""
     echo "Beads progress: ${completed} completed, ${remaining} remaining"
 fi
@@ -92,9 +92,9 @@ fi
 
 ```bash
 # Kill tmux session
-if tmux has-session -t "loop-${session}" 2>/dev/null; then
-    tmux kill-session -t "loop-${session}"
-    echo "✓ Killed tmux session loop-${session}"
+if tmux has-session -t "pipeline-${session}" 2>/dev/null; then
+    tmux kill-session -t "pipeline-${session}"
+    echo "✓ Killed tmux session pipeline-${session}"
 else
     echo "• tmux session not found (already dead)"
 fi

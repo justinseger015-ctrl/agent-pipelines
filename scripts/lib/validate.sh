@@ -47,8 +47,8 @@ KNOWN_VARS="SESSION SESSION_NAME ITERATION INDEX PERSPECTIVE OUTPUT OUTPUT_PATH 
 validate_loop() {
   local name=$1
   local quiet=${2:-""}
-  local loops_dir="${VALIDATE_SCRIPT_DIR}/../loops"
-  local dir="$loops_dir/$name"
+  local stages_dir="${VALIDATE_SCRIPT_DIR}/../stages"
+  local dir="$stages_dir/$name"
   local errors=()
   local warnings=()
 
@@ -255,7 +255,7 @@ validate_pipeline() {
 
     # P008: Referenced loops exist
     if [ -n "$stage_loop" ]; then
-      local loop_dir="${VALIDATE_SCRIPT_DIR}/../loops/$stage_loop"
+      local loop_dir="${VALIDATE_SCRIPT_DIR}/../stages/$stage_loop"
       if [ ! -d "$loop_dir" ]; then
         errors+=("Stage '$stage_name': references unknown loop '$stage_loop'")
       fi
@@ -384,8 +384,8 @@ lint_all() {
   # Validate all loops
   echo "Validating loops..."
   echo ""
-  local loops_dir="${VALIDATE_SCRIPT_DIR}/../loops"
-  for dir in "$loops_dir"/*/; do
+  local stages_dir="${VALIDATE_SCRIPT_DIR}/../stages"
+  for dir in "$stages_dir"/*/; do
     [ -d "$dir" ] || continue
     local name=$(basename "$dir")
     total=$((total + 1))
@@ -427,8 +427,8 @@ lint_all() {
 dry_run_loop() {
   local name=$1
   local session=${2:-"preview"}
-  local loops_dir="${VALIDATE_SCRIPT_DIR}/../loops"
-  local dir="$loops_dir/$name"
+  local stages_dir="${VALIDATE_SCRIPT_DIR}/../stages"
+  local dir="$stages_dir/$name"
 
   # First validate
   echo "# Dry Run: Loop $name"
@@ -505,7 +505,7 @@ EOF
   case $term_type in
     queue)
       echo "The loop will stop when:"
-      echo "- \`bd ready --label=loop/${session}\` returns 0 results"
+      echo "- \`bd ready --label=pipeline/${session}\` returns 0 results"
       echo "- Agent writes \`decision: continue\` (no error)"
       ;;
     judgment)
@@ -573,7 +573,7 @@ dry_run_pipeline() {
       echo "- **Max iterations:** $stage_runs"
 
       # Get loop's termination strategy (v3)
-      local loop_config=$(yaml_to_json "${VALIDATE_SCRIPT_DIR}/../loops/$stage_loop/loop.yaml" 2>/dev/null)
+      local loop_config=$(yaml_to_json "${VALIDATE_SCRIPT_DIR}/../stages/$stage_loop/loop.yaml" 2>/dev/null)
       local term_type=$(json_get "$loop_config" ".termination.type" "")
       if [ -n "$term_type" ]; then
         echo "- **Termination:** $term_type"

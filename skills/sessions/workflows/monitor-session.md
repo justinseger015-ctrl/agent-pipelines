@@ -41,7 +41,7 @@ Use AskUserQuestion if multiple sessions:
 ## Step 2: Verify Session Exists
 
 ```bash
-if ! tmux has-session -t "loop-${session}" 2>/dev/null; then
+if ! tmux has-session -t "pipeline-${session}" 2>/dev/null; then
     echo "Session '${session}' is not running."
 
     # Check if it completed or crashed
@@ -65,7 +65,7 @@ fi
 
 ```bash
 # Capture last 50 lines of tmux pane
-tmux capture-pane -t "loop-${session}" -p | tail -50
+tmux capture-pane -t "pipeline-${session}" -p | tail -50
 ```
 
 ## Step 4: Show Status Context
@@ -107,8 +107,8 @@ For work sessions, show beads status:
 
 ```bash
 # Check remaining beads
-remaining=$(bd ready --label="loop/${session}" 2>/dev/null | wc -l)
-completed=$(bd list --label="loop/${session}" --status=closed 2>/dev/null | wc -l)
+remaining=$(bd ready --label="pipeline/${session}" 2>/dev/null | wc -l)
+completed=$(bd list --label="pipeline/${session}" --status=closed 2>/dev/null | wc -l)
 
 echo "Beads: ${completed} completed, ${remaining} remaining"
 ```
@@ -117,10 +117,10 @@ echo "Beads: ${completed} completed, ${remaining} remaining"
 
 ```
 Actions:
-  • Attach (live): tmux attach -t loop-${session}  (Ctrl+b, d to detach)
-  • Refresh:       tmux capture-pane -t loop-${session} -p | tail -50
+  • Attach (live): tmux attach -t pipeline-${session}  (Ctrl+b, d to detach)
+  • Refresh:       tmux capture-pane -t pipeline-${session} -p | tail -50
   • Status:        ./scripts/run.sh status ${session}
-  • Kill:          tmux kill-session -t loop-${session}
+  • Kill:          tmux kill-session -t pipeline-${session}
 ```
 </process>
 

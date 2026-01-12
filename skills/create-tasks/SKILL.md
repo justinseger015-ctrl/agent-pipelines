@@ -11,10 +11,10 @@ Never output questions as text. If you need information, invoke `AskUserQuestion
 
 ## What This Skill Produces
 
-Beads tagged with `loop/{session-name}` that an agent can execute autonomously:
+Beads tagged with `pipeline/{session-name}` that an agent can execute autonomously:
 
 ```bash
-bd create --title="Story title" --type=task --priority=2 --add-label="loop/{session}"
+bd create --title="Story title" --type=task --priority=2 --add-label="pipeline/{session}"
 ```
 
 ## Process
@@ -41,7 +41,7 @@ options:
     description: "I have a plan somewhere else"
 ```
 
-If they choose to create a PRD, invoke `/loop-agents:prd`.
+If they choose to create a PRD, invoke `/agent-pipelines:prd`.
 
 ### 2. Analyze the PRD
 
@@ -121,7 +121,7 @@ bd create \
   --title="Story title" \
   --type=task \
   --priority=2 \
-  --add-label="loop/{session-name}" \
+  --add-label="pipeline/{session-name}" \
   --description="Description here" \
   --acceptance="- [ ] Criterion 1
 - [ ] Criterion 2
@@ -140,12 +140,12 @@ The agent will use judgment to pick the logical next task. Don't over-specify de
 ```
 ✅ Created {N} beads for session: {session-name}
 
-View beads:    bd list --label=loop/{session-name}
-Ready to work: bd ready --label=loop/{session-name}
+View beads:    bd list --label=pipeline/{session-name}
+Ready to work: bd ready --label=pipeline/{session-name}
 
 Next steps:
-- Refine beads: /loop-agents:refine
-- Launch work loop: /loop-agents:loop
+- Refine beads: /agent-pipelines:refine
+- Launch work loop: /agent-pipelines:loop
 ```
 
 **IMPORTANT:** The session name must be clearly outputted so other commands can use it.
@@ -172,6 +172,6 @@ Next steps:
 - [ ] Found or created PRD to work from
 - [ ] Story list approved by user
 - [ ] Every acceptance criterion is verifiable
-- [ ] Beads created with `loop/{session}` label
+- [ ] Beads created with `pipeline/{session}` label
 - [ ] Dependencies only where truly required
 - [ ] Session name clearly communicated

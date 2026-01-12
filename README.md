@@ -1,4 +1,4 @@
-# Loop Agents
+# Agent Pipelines
 
 A [Ralph loop](https://ghuntley.com/ralph/) orchestrator for Claude Code.
 
@@ -10,9 +10,9 @@ Describe what you want to build, and Claude handles the rest: planning, task bre
 - Planning workflow: PRD → tasks → implementation loop.
 - Pipelines to chain loops together.
 
-## Build Your Own Loop Agents
+## Build Your Own Stages
 
-Loop Agents is also a framework for creating custom loop types. Each loop agent has:
+Agent Pipelines is also a framework for creating custom loop types. Each loop agent has:
 
 - A **prompt** that tells Claude what to do each iteration
 - A **completion strategy** that decides when to stop
@@ -30,7 +30,7 @@ Built-in completion strategies:
 
 Scaffold a new loop in seconds:
 ```bash
-/loop-agents:build-loop bugfix
+/agent-pipelines:build-loop bugfix
 ```
 
 This creates `scripts/loops/bugfix/` with a config and prompt template. Edit the prompt, pick your completion strategy, done.
@@ -39,10 +39,10 @@ This creates `scripts/loops/bugfix/` with a config and prompt template. Edit the
 
 ```bash
 # Add the marketplace
-claude plugin marketplace add https://github.com/hwells4/loop-agents
+claude plugin marketplace add https://github.com/hwells4/agent-pipelines
 
 # Install the plugin
-claude plugin install loop-agents@dodo-digital
+claude plugin install agent-pipelines@dodo-digital
 ```
 
 ## Dependencies
@@ -78,9 +78,9 @@ The plugin checks for these on startup:
 ### Supporting Skills
 
 ```bash
-/loop-agents:create-prd     # Generate product requirements document
-/loop-agents:create-tasks   # Break PRD into executable beads
-/loop-agents:build-loop     # Scaffold a new custom loop type
+/agent-pipelines:create-prd     # Generate product requirements document
+/agent-pipelines:create-tasks   # Break PRD into executable beads
+/agent-pipelines:build-loop     # Scaffold a new custom loop type
 ```
 
 Or just talk to Claude naturally:
@@ -195,7 +195,7 @@ Available pipelines:
 
 ```
 scripts/
-├── loops/                     # Loop engine + loop types
+├── stages/                    # Stage definitions + loop types
 │   ├── engine.sh              # Core loop runner
 │   ├── run.sh                 # Convenience wrapper
 │   ├── config.sh              # YAML configuration loader
@@ -246,10 +246,10 @@ your-project/
 │   └── plans/                        # PRDs
 │       └── 2025-01-09-auth-prd.md
 ├── .claude/
-│   ├── loop-progress/
+│   ├── pipeline-progress/
 │   │   └── progress-auth.txt         # Accumulated context
-│   ├── loop-state-auth.json          # Iteration history
-│   └── loop-completions.json         # Completion log
+│   ├── pipeline-state-auth.json          # Iteration history
+│   └── pipeline-completions.json         # Completion log
 └── .beads/                           # Task database
 ```
 
@@ -299,8 +299,8 @@ JSON files track iteration history for completion checks:
 Run multiple loops simultaneously. Each has isolated beads, progress, state, and tmux session:
 
 ```bash
-loop-auth      # beads tagged loop/auth
-loop-dashboard # beads tagged loop/dashboard
+pipeline-auth      # beads tagged pipeline/auth
+pipeline-dashboard # beads tagged pipeline/dashboard
 ```
 
 ## Notifications
@@ -309,7 +309,7 @@ When a loop completes:
 - **macOS**: Native notification center
 - **Linux**: `notify-send` (requires `libnotify`)
 
-All completions logged to `.claude/loop-completions.json`.
+All completions logged to `.claude/pipeline-completions.json`.
 
 ## Environment Variables
 
@@ -317,9 +317,9 @@ Loops export these for hooks and prompts:
 
 | Variable | Description |
 |----------|-------------|
-| `CLAUDE_LOOP_AGENT` | Always `1` when inside a loop |
-| `CLAUDE_LOOP_SESSION` | Current session name |
-| `CLAUDE_LOOP_TYPE` | Current loop type |
+| `CLAUDE_PIPELINE_AGENT` | Always `1` when inside a loop |
+| `CLAUDE_PIPELINE_SESSION` | Current session name |
+| `CLAUDE_PIPELINE_TYPE` | Current loop type |
 
 ## Limitations
 

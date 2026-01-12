@@ -15,7 +15,7 @@ How to choose the right termination strategy for a pipeline stage.
 **Use when:** Work is driven by an external queue of items.
 
 **How it works:**
-1. Before each iteration, engine runs `bd ready --label=loop/{session}`
+1. Before each iteration, engine runs `bd ready --label=pipeline/{session}`
 2. If queue is empty, pipeline stops
 3. If items remain, another iteration runs
 

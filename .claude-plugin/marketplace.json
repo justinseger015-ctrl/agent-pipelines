@@ -7,15 +7,15 @@
   },
   "plugins": [
     {
-      "name": "loop-agents",
-      "description": "Create and manage autonomous Loop Agents in Claude Code",
+      "name": "agent-pipelines",
+      "description": "Run autonomous agent pipelines in Claude Code",
       "version": "1.0.0",
       "author": {
         "name": "Harrison Wells"
       },
-      "source": "github:hwells4/loop-agents",
+      "source": "github:hwells4/agent-pipelines",
       "category": "development",
-      "homepage": "https://github.com/hwells4/loop-agents"
+      "homepage": "https://github.com/hwells4/agent-pipelines"
     },
     {
       "name": "create-hooks",

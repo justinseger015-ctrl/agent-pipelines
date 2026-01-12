@@ -188,6 +188,6 @@ Claude: [Detects edit intent, invokes pipeline-editor]
 
 | Command | Purpose |
 |---------|---------|
-| `/loop-agents:sessions` | Run and manage pipeline sessions |
+| `/agent-pipelines:sessions` | Run and manage pipeline sessions |
 | `/work` | Quick-start work pipelines |
 | `/refine` | Quick-start refinement pipelines |

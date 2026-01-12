@@ -13,7 +13,7 @@ Generalize the queue/work system to support multiple providers (beads, file-base
 
 ## Problem Statement / Motivation
 
-The loop-agents system currently only works with beads for task management. Users want to:
+The agent-pipelines system currently only works with beads for task management. Users want to:
 1. **Use file-based todos** - Track tasks in `todos/*.md` with YAML frontmatter
 2. **Integrate with external systems** - GitHub Issues, Linear, Jira
 3. **Create custom providers** - Wrap any CLI/API as a work source
@@ -69,7 +69,7 @@ termination:
 queue:
   provider: beads              # Provider name (directory in providers/)
   config:                      # Provider-specific config (passed as QUEUE_CONFIG)
-    label_prefix: "loop/"      # Beads-specific: label prefix
+    label_prefix: "pipeline/"      # Beads-specific: label prefix
 ```
 
 **File provider example:**
@@ -102,7 +102,7 @@ Commands are injected into `context.json` for agent use:
   "queue": {
     "provider": "beads",
     "commands": {
-      "list": "bd ready --label=loop/auth",
+      "list": "bd ready --label=pipeline/auth",
       "claim": "bd update {{id}} --status=in_progress",
       "show": "bd show {{id}}",
       "complete": "bd close {{id}}"
@@ -181,7 +181,7 @@ load_queue_provider() {
 # Provider-agnostic operations
 queue_count() {
   local session=$1
-  QUEUE_SESSION="$session" QUEUE_LABEL="loop/$session" \
+  QUEUE_SESSION="$session" QUEUE_LABEL="pipeline/$session" \
     "$QUEUE_PROVIDER_DIR/count"
 }
 ```
@@ -193,7 +193,7 @@ queue_count() {
 #!/bin/bash
 # scripts/lib/providers/beads/count
 session=${QUEUE_SESSION:?"QUEUE_SESSION required"}
-label="loop/$session"
+label="pipeline/$session"
 bd ready --label="$label" 2>/dev/null | grep -c "^" || echo "0"
 ```
 
@@ -201,7 +201,7 @@ bd ready --label="$label" 2>/dev/null | grep -c "^" || echo "0"
 #!/bin/bash
 # scripts/lib/providers/beads/list
 session=${QUEUE_SESSION:?"QUEUE_SESSION required"}
-label="loop/$session"
+label="pipeline/$session"
 bd ready --label="$label" --json 2>/dev/null || echo "[]"
 ```
 
@@ -215,7 +215,7 @@ requires:
 config_schema:
   label_prefix:
     type: string
-    default: "loop/"
+    default: "pipeline/"
     description: Prefix for session labels
 ```
 

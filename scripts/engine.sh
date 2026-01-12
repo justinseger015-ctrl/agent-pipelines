@@ -19,7 +19,7 @@ shift
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(pwd)"
 LIB_DIR="$SCRIPT_DIR/lib"
-LOOPS_DIR="$SCRIPT_DIR/loops"
+STAGES_DIR="$SCRIPT_DIR/stages"
 
 export PROJECT_ROOT
 
@@ -47,23 +47,23 @@ source "$LIB_DIR/lock.sh"
 source "$LIB_DIR/validate.sh"
 
 # Export for hooks
-export CLAUDE_LOOP_AGENT=1
+export CLAUDE_PIPELINE_AGENT=1
 
 #-------------------------------------------------------------------------------
 # Loop Loading
 #-------------------------------------------------------------------------------
 
-# Load a stage definition from loops/ directory
+# Load a stage definition from stages/ directory
 # Sets: LOOP_CONFIG (JSON), LOOP_PROMPT, LOOP_*
 load_stage() {
   local stage_type=$1
-  local stage_dir="$LOOPS_DIR/$stage_type"
+  local stage_dir="$STAGES_DIR/$stage_type"
 
   if [ ! -d "$stage_dir" ]; then
     echo "Error: Loop type not found: $stage_type" >&2
-    echo "Available loops:" >&2
-    ls "$LOOPS_DIR" 2>/dev/null | while read d; do
-      [ -d "$LOOPS_DIR/$d" ] && echo "  $d" >&2
+    echo "Available stages:" >&2
+    ls "$STAGES_DIR" 2>/dev/null | while read d; do
+      [ -d "$STAGES_DIR/$d" ] && echo "  $d" >&2
     done
     return 1
   fi
@@ -176,8 +176,8 @@ run_stage() {
   local state_file=$(init_state "$session" "loop" "$run_dir")
   local progress_file=$(init_progress "$session" "$run_dir")
 
-  export CLAUDE_LOOP_SESSION="$session"
-  export CLAUDE_LOOP_TYPE="$stage_type"
+  export CLAUDE_PIPELINE_SESSION="$session"
+  export CLAUDE_PIPELINE_TYPE="$stage_type"
   export MAX_ITERATIONS="$max_iterations"
 
   # Display header

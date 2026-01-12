@@ -33,5 +33,5 @@ Ideas are scored (Impact 1-5, Effort 1-5, Risk 1-5) and ranked by ROI.
 
 ## After Ideation
 
-- `/loop-agents:create-tasks` → Turn ideas into beads
+- `/agent-pipelines:create-tasks` → Turn ideas into beads
 - `/refine` → Incorporate ideas into existing plan

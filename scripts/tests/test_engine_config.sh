@@ -52,7 +52,7 @@ _parse_loop_config() {
 #-------------------------------------------------------------------------------
 
 test_work_stage_loads_queue_termination() {
-  _parse_loop_config "$SCRIPT_DIR/loops/work"
+  _parse_loop_config "$SCRIPT_DIR/stages/work"
 
   assert_eq "queue" "$LOOP_TERM_TYPE" "work stage has termination.type=queue"
   assert_eq "beads-empty" "$LOOP_COMPLETION" "queue maps to beads-empty completion"
@@ -63,17 +63,17 @@ test_work_stage_loads_queue_termination() {
 #-------------------------------------------------------------------------------
 
 test_improve_plan_loads_judgment_termination() {
-  _parse_loop_config "$SCRIPT_DIR/loops/improve-plan"
+  _parse_loop_config "$SCRIPT_DIR/stages/improve-plan"
 
   assert_eq "judgment" "$LOOP_TERM_TYPE" "improve-plan has termination.type=judgment"
   assert_eq "plateau" "$LOOP_COMPLETION" "judgment maps to plateau completion"
 }
 
 test_improve_plan_loads_consensus() {
-  _parse_loop_config "$SCRIPT_DIR/loops/improve-plan"
+  _parse_loop_config "$SCRIPT_DIR/stages/improve-plan"
 
   # Check the actual config value (should be 2 for improve-plan)
-  local config=$(yaml_to_json "$SCRIPT_DIR/loops/improve-plan/loop.yaml")
+  local config=$(yaml_to_json "$SCRIPT_DIR/stages/improve-plan/loop.yaml")
   local consensus=$(json_get "$config" ".termination.consensus" "")
 
   assert_eq "2" "$consensus" "improve-plan has consensus=2 in config"
@@ -81,9 +81,9 @@ test_improve_plan_loads_consensus() {
 }
 
 test_improve_plan_loads_min_iterations() {
-  _parse_loop_config "$SCRIPT_DIR/loops/improve-plan"
+  _parse_loop_config "$SCRIPT_DIR/stages/improve-plan"
 
-  local config=$(yaml_to_json "$SCRIPT_DIR/loops/improve-plan/loop.yaml")
+  local config=$(yaml_to_json "$SCRIPT_DIR/stages/improve-plan/loop.yaml")
   local min_iter=$(json_get "$config" ".termination.min_iterations" "")
 
   assert_eq "2" "$min_iter" "improve-plan has min_iterations=2 in config"
@@ -95,16 +95,16 @@ test_improve_plan_loads_min_iterations() {
 #-------------------------------------------------------------------------------
 
 test_elegance_loads_judgment_termination() {
-  _parse_loop_config "$SCRIPT_DIR/loops/elegance"
+  _parse_loop_config "$SCRIPT_DIR/stages/elegance"
 
   assert_eq "judgment" "$LOOP_TERM_TYPE" "elegance has termination.type=judgment"
   assert_eq "plateau" "$LOOP_COMPLETION" "judgment maps to plateau completion"
 }
 
 test_elegance_loads_consensus() {
-  _parse_loop_config "$SCRIPT_DIR/loops/elegance"
+  _parse_loop_config "$SCRIPT_DIR/stages/elegance"
 
-  local config=$(yaml_to_json "$SCRIPT_DIR/loops/elegance/loop.yaml")
+  local config=$(yaml_to_json "$SCRIPT_DIR/stages/elegance/loop.yaml")
   local consensus=$(json_get "$config" ".termination.consensus" "")
 
   # elegance should have consensus configured
@@ -117,7 +117,7 @@ test_elegance_loads_consensus() {
 #-------------------------------------------------------------------------------
 
 test_idea_wizard_loads_fixed_termination() {
-  _parse_loop_config "$SCRIPT_DIR/loops/idea-wizard"
+  _parse_loop_config "$SCRIPT_DIR/stages/idea-wizard"
 
   assert_eq "fixed" "$LOOP_TERM_TYPE" "idea-wizard has termination.type=fixed"
   assert_eq "fixed-n" "$LOOP_COMPLETION" "fixed maps to fixed-n completion"
@@ -128,7 +128,7 @@ test_idea_wizard_loads_fixed_termination() {
 #-------------------------------------------------------------------------------
 
 test_refine_beads_loads_judgment_termination() {
-  _parse_loop_config "$SCRIPT_DIR/loops/refine-beads"
+  _parse_loop_config "$SCRIPT_DIR/stages/refine-beads"
 
   assert_eq "judgment" "$LOOP_TERM_TYPE" "refine-beads has termination.type=judgment"
   assert_eq "plateau" "$LOOP_COMPLETION" "judgment maps to plateau completion"
@@ -142,7 +142,7 @@ test_config_exports_min_iterations() {
   # Unset any existing value
   unset MIN_ITERATIONS
 
-  _parse_loop_config "$SCRIPT_DIR/loops/improve-plan"
+  _parse_loop_config "$SCRIPT_DIR/stages/improve-plan"
 
   # Should be exported
   assert_neq "" "$MIN_ITERATIONS" "MIN_ITERATIONS is exported"
@@ -152,7 +152,7 @@ test_config_exports_consensus() {
   # Unset any existing value
   unset CONSENSUS
 
-  _parse_loop_config "$SCRIPT_DIR/loops/improve-plan"
+  _parse_loop_config "$SCRIPT_DIR/stages/improve-plan"
 
   # Should be exported
   assert_neq "" "$CONSENSUS" "CONSENSUS is exported"

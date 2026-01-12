@@ -20,7 +20,7 @@ A basic [Ralph loop](https://ghuntley.com/ralph/) implementation. Spawns a fresh
 
 ## How It Works
 
-Runs in tmux (`loop-{session}`). Each iteration:
+Runs in tmux (`pipeline-{session}`). Each iteration:
 1. Fresh Claude spawns
 2. Reads progress file (accumulated context)
 3. Picks next bead from queue
@@ -37,6 +37,6 @@ Repeats until queue empty.
 ## Monitoring
 
 ```bash
-tmux attach -t loop-{session}     # Watch live
-bd ready --label=loop/{session}   # Remaining tasks
+tmux attach -t pipeline-{session}     # Watch live
+bd ready --label=pipeline/{session}   # Remaining tasks
 ```

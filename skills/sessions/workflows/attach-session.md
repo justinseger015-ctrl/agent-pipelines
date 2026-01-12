@@ -41,7 +41,7 @@ Use AskUserQuestion if multiple sessions:
 ## Step 2: Verify Session Exists
 
 ```bash
-if ! tmux has-session -t "loop-${session}" 2>/dev/null; then
+if ! tmux has-session -t "pipeline-${session}" 2>/dev/null; then
     echo "Session '${session}' is not running."
 
     # Check state for context
@@ -70,7 +70,7 @@ ATTACH TO SESSION: ${session}
 
 Run this command in your terminal:
 
-  tmux attach -t loop-${session}
+  tmux attach -t pipeline-${session}
 
 Once attached:
   • You're watching live output (read-only)
@@ -102,7 +102,7 @@ fi
 # Show last few lines as preview
 echo ""
 echo "Recent output preview:"
-tmux capture-pane -t "loop-${session}" -p | tail -10
+tmux capture-pane -t "pipeline-${session}" -p | tail -10
 ```
 
 ## Step 5: Explain What They'll See
@@ -117,7 +117,7 @@ What to expect:
 If session seems stuck:
   • Check iteration progress over time
   • Sessions > 2 hours may indicate issues
-  • Consider: /loop-agents:sessions kill ${session}
+  • Consider: /agent-pipelines:sessions kill ${session}
 ```
 </process>
 

@@ -74,7 +74,7 @@ hooks:
   on_error: "./scripts/notify.sh failed ${SESSION} ${ERROR}"
 ```
 
-### Global Configuration (~/.config/loop-agents/hooks.sh)
+### Global Configuration (~/.config/agent-pipelines/hooks.sh)
 
 ```bash
 #!/bin/bash
@@ -103,7 +103,7 @@ on_error() {
 ### Hook Priority
 
 1. Loop-specific hooks (loop.yaml) run first
-2. Global hooks (~/.config/loop-agents/hooks.sh) run second
+2. Global hooks (~/.config/agent-pipelines/hooks.sh) run second
 3. Either can be disabled with `hooks.disable_global: true` in loop.yaml
 
 ## Environment Variables
@@ -130,7 +130,7 @@ Hooks receive context via environment variables:
 #!/bin/bash
 # Hook execution utilities
 
-HOOKS_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/loop-agents"
+HOOKS_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/agent-pipelines"
 HOOKS_FILE="$HOOKS_CONFIG_DIR/hooks.sh"
 
 # Load global hooks if available
@@ -217,7 +217,7 @@ Built-in webhook templates as a first-class hook use case.
 ./scripts/run.sh notify setup teams
 ```
 
-### Configuration (~/.config/loop-agents/webhooks.yaml)
+### Configuration (~/.config/agent-pipelines/webhooks.yaml)
 
 ```yaml
 webhooks:
@@ -269,7 +269,7 @@ send_slack_notification() {
 4. Test with simple echo hooks
 
 ### Phase 2: Global Hooks
-1. Support `~/.config/loop-agents/hooks.sh`
+1. Support `~/.config/agent-pipelines/hooks.sh`
 2. Add hook priority logic
 3. Add `disable_global: true` option
 
@@ -668,7 +668,7 @@ http.server.HTTPServer(('', $port), Handler).serve_forever()
 For firewalled environments, use a relay service:
 
 ```yaml
-# ~/.config/loop-agents/webhooks.yaml
+# ~/.config/agent-pipelines/webhooks.yaml
 relay:
   provider: cloudflare-tunnel  # or ngrok, localtunnel
   auth_token: "${CLOUDFLARE_TOKEN}"

@@ -15,7 +15,7 @@ test_mock_mode_disabled_by_default() {
 
 test_enable_mock_mode() {
   # Should enable mock mode with fixtures directory
-  local fixtures="$SCRIPT_DIR/loops/work/fixtures"
+  local fixtures="$SCRIPT_DIR/stages/work/fixtures"
   enable_mock_mode "$fixtures"
 
   assert_true "$MOCK_MODE" "Mock mode enabled"
@@ -26,7 +26,7 @@ test_enable_mock_mode() {
 
 test_disable_mock_mode() {
   # Should disable mock mode
-  enable_mock_mode "$SCRIPT_DIR/loops/work/fixtures"
+  enable_mock_mode "$SCRIPT_DIR/stages/work/fixtures"
   disable_mock_mode
 
   assert_false "$MOCK_MODE" "Mock mode disabled"
@@ -40,7 +40,7 @@ test_is_mock_mode() {
   local result=$?
   assert_eq "1" "$result" "is_mock_mode returns 1 when disabled"
 
-  enable_mock_mode "$SCRIPT_DIR/loops/work/fixtures"
+  enable_mock_mode "$SCRIPT_DIR/stages/work/fixtures"
   is_mock_mode
   result=$?
   assert_eq "0" "$result" "is_mock_mode returns 0 when enabled"
@@ -54,7 +54,7 @@ test_is_mock_mode() {
 
 test_get_mock_response_default() {
   # Should return default fixture when no iteration-specific one exists
-  enable_mock_mode "$SCRIPT_DIR/loops/work/fixtures"
+  enable_mock_mode "$SCRIPT_DIR/stages/work/fixtures"
 
   local response=$(get_mock_response 99)
 
@@ -65,7 +65,7 @@ test_get_mock_response_default() {
 
 test_get_mock_response_iteration_specific() {
   # Should return iteration-specific fixture when it exists
-  enable_mock_mode "$SCRIPT_DIR/loops/improve-plan/fixtures"
+  enable_mock_mode "$SCRIPT_DIR/stages/improve-plan/fixtures"
 
   local response=$(get_mock_response 1)
   assert_contains "$response" "Initial Review" "Returns iteration-1 fixture"
@@ -81,7 +81,7 @@ test_get_mock_response_iteration_specific() {
 
 test_get_mock_status_sequence() {
   # v3: Fixtures should have status-N.json with correct decisions
-  enable_mock_mode "$SCRIPT_DIR/loops/improve-plan/fixtures"
+  enable_mock_mode "$SCRIPT_DIR/stages/improve-plan/fixtures"
 
   local status1=$(get_mock_status 1)
   local decision1=$(echo "$status1" | jq -r '.decision')
@@ -104,7 +104,7 @@ test_get_mock_status_sequence() {
 
 test_get_mock_status() {
   # Should return status JSON for iteration
-  enable_mock_mode "$SCRIPT_DIR/loops/improve-plan/fixtures"
+  enable_mock_mode "$SCRIPT_DIR/stages/improve-plan/fixtures"
 
   local status=$(get_mock_status 1)
   local decision=$(echo "$status" | jq -r '.decision')

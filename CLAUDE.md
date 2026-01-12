@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-Loop Agents is a [Ralph loop](https://ghuntley.com/ralph/) orchestrator for Claude Code. It runs autonomous, multi-iteration agent workflows in tmux sessions. Each iteration spawns a fresh Claude instance that reads accumulated progress to maintain context without degradation.
+Agent Pipelines is a [Ralph loop](https://ghuntley.com/ralph/) orchestrator for Claude Code. It runs autonomous, multi-iteration agent workflows in tmux sessions. Each iteration spawns a fresh Claude instance that reads accumulated progress to maintain context without degradation.
 
 **Core philosophy:** Fresh agent per iteration prevents context degradation. Two-agent consensus prevents premature stopping. Planning tokens are cheaper than implementation tokens.
 
@@ -44,9 +44,9 @@ Skills are Claude Code extensions in `skills/`. Each provides specialized workfl
 |-------|------------|---------|
 | **sessions** | `/sessions` | Start/manage pipelines in tmux |
 | **plan-refinery** | `/plan-refinery` | Iterative planning with Opus subagents |
-| **create-prd** | `/loop-agents:create-prd` | Generate PRDs through adaptive questioning |
-| **create-tasks** | `/loop-agents:create-tasks` | Break PRD into executable beads |
-| **pipeline-builder** | `/loop-agents:pipeline-builder` | Create custom stages and pipelines |
+| **create-prd** | `/agent-pipelines:create-prd` | Generate PRDs through adaptive questioning |
+| **create-tasks** | `/agent-pipelines:create-tasks` | Break PRD into executable beads |
+| **pipeline-builder** | `/agent-pipelines:pipeline-builder` | Create custom stages and pipelines |
 
 ### Skill Structure
 
@@ -228,8 +228,8 @@ delay: 3                # seconds between iterations
 ## Recommended Workflow
 
 **Feature implementation flow:**
-1. `/loop plan` or `/loop-agents:create-prd` → Gather requirements, save to `docs/plans/`
-2. `/loop-agents:create-tasks` → Break PRD into beads tagged `loop/{session}`
+1. `/loop plan` or `/agent-pipelines:create-prd` → Gather requirements, save to `docs/plans/`
+2. `/agent-pipelines:create-tasks` → Break PRD into beads tagged `pipeline/{session}`
 3. `/refine` → Run refinement pipeline (default: 5+5 iterations)
 4. `/work` → Run work pipeline until all beads complete
 
@@ -239,15 +239,15 @@ delay: 3                # seconds between iterations
 
 **Two-agent consensus** (plateau): Prevents single-agent blind spots. Both must independently confirm completion.
 
-**Beads integration**: Work stage uses `bd` CLI to list/claim/close tasks. Beads are tagged with `loop/{session}`.
+**Beads integration**: Work stage uses `bd` CLI to list/claim/close tasks. Beads are tagged with `pipeline/{session}`.
 
-**Session isolation**: Each session has separate beads (`loop/{session}` label), progress file, state file, and tmux session.
+**Session isolation**: Each session has separate beads (`pipeline/{session}` label), progress file, state file, and tmux session.
 
 ## Debugging
 
 ```bash
 # Watch a running pipeline
-tmux attach -t loop-{session}
+tmux attach -t pipeline-{session}
 
 # Check pipeline state
 cat .claude/pipeline-runs/{session}/state.json | jq
@@ -256,10 +256,10 @@ cat .claude/pipeline-runs/{session}/state.json | jq
 cat .claude/pipeline-runs/{session}/progress-{session}.md
 
 # Check remaining beads
-bd ready --label=loop/{session}
+bd ready --label=pipeline/{session}
 
 # Kill a stuck pipeline
-tmux kill-session -t loop-{session}
+tmux kill-session -t pipeline-{session}
 
 # Check session status (active, failed, completed)
 ./scripts/run.sh status {session}
@@ -316,6 +316,6 @@ rm .claude/locks/{session}.lock
 ## Environment Variables
 
 Pipelines export:
-- `CLAUDE_LOOP_AGENT=1` - Always true inside a pipeline
-- `CLAUDE_LOOP_SESSION` - Current session name
-- `CLAUDE_LOOP_TYPE` - Current stage type
+- `CLAUDE_PIPELINE_AGENT=1` - Always true inside a pipeline
+- `CLAUDE_PIPELINE_SESSION` - Current session name
+- `CLAUDE_PIPELINE_TYPE` - Current stage type

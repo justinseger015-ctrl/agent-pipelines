@@ -14,7 +14,7 @@ Progress file: ${PROGRESS}
 
 2. **List available stories** for this session:
    ```bash
-   bd ready --label=loop/${SESSION_NAME}
+   bd ready --label=pipeline/${SESSION_NAME}
    ```
 
 3. **Choose the most logical next story** based on:
@@ -93,7 +93,7 @@ After completing your work, write your status to `${STATUS}`:
 
 Check if any work remains:
 ```bash
-bd ready --label=loop/${SESSION_NAME}
+bd ready --label=pipeline/${SESSION_NAME}
 ```
 
 If no beads returned (empty output), all work is complete. Set decision to "stop".

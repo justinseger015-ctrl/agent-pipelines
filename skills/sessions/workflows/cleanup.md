@@ -29,7 +29,7 @@ all_sessions=$(
 problems=()
 
 for session in $all_sessions; do
-    has_tmux=$(tmux has-session -t "loop-${session}" 2>/dev/null && echo "yes" || echo "no")
+    has_tmux=$(tmux has-session -t "pipeline-${session}" 2>/dev/null && echo "yes" || echo "no")
     has_lock=$(test -f ".claude/locks/${session}.lock" && echo "yes" || echo "no")
     has_state=$(test -f ".claude/pipeline-runs/${session}/state.json" && echo "yes" || echo "no")
 
@@ -145,7 +145,7 @@ for problem in "${problems[@]}"; do
         echo "  2. Leave it (investigate manually)"
 
         # If Fix All, default to kill
-        tmux kill-session -t "loop-${session}"
+        tmux kill-session -t "pipeline-${session}"
         echo "✓ Killed orphaned tmux session '${session}'"
     fi
 done
@@ -186,8 +186,8 @@ Sessions available to resume:
   • old-feature: ./scripts/run.sh work old-feature 15 --resume
 
 Next actions:
-  • List sessions: /loop-agents:sessions list
-  • Start new:     /loop-agents:sessions start
+  • List sessions: /agent-pipelines:sessions list
+  • Start new:     /agent-pipelines:sessions start
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```

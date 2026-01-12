@@ -21,15 +21,15 @@ Both use the same directory structure, state files, and lock management.
 Each session creates three resources that must stay synchronized:
 1. **Lock file** (`.claude/locks/{session}.lock`) - Prevents duplicates
 2. **State file** (`.claude/pipeline-runs/{session}/state.json`) - Tracks progress
-3. **tmux session** (`loop-{session}`) - Runs the actual process
+3. **tmux session** (`pipeline-{session}`) - Runs the actual process
 
 Problems occur when these get out of sync (crashes, force-kills, network issues).
 
 ## Naming Conventions
 
 - Session names: lowercase, hyphens only (`auth`, `billing-refactor`)
-- tmux sessions: `loop-{session}`
-- Beads labels: `loop/{session}`
+- tmux sessions: `pipeline-{session}`
+- Beads labels: `pipeline/{session}`
 
 ## Validation First
 
@@ -109,7 +109,7 @@ tmux list-sessions 2>/dev/null | grep -E "^loop-"
 
 **Peek at output:**
 ```bash
-tmux capture-pane -t loop-{session} -p | tail -50
+tmux capture-pane -t pipeline-{session} -p | tail -50
 ```
 
 **Full status check:**

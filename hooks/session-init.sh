@@ -8,9 +8,9 @@ PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
 # Create symlink to plugin (needed for tmux to find scripts)
 if [ -n "$PLUGIN_ROOT" ]; then
   mkdir -p "$PROJECT_PATH/.claude"
-  if [ ! -L "$PROJECT_PATH/.claude/loop-agents" ] || [ "$(readlink "$PROJECT_PATH/.claude/loop-agents")" != "$PLUGIN_ROOT" ]; then
-    rm -f "$PROJECT_PATH/.claude/loop-agents" 2>/dev/null
-    ln -sf "$PLUGIN_ROOT" "$PROJECT_PATH/.claude/loop-agents"
+  if [ ! -L "$PROJECT_PATH/.claude/agent-pipelines" ] || [ "$(readlink "$PROJECT_PATH/.claude/agent-pipelines")" != "$PLUGIN_ROOT" ]; then
+    rm -f "$PROJECT_PATH/.claude/agent-pipelines" 2>/dev/null
+    ln -sf "$PLUGIN_ROOT" "$PROJECT_PATH/.claude/agent-pipelines"
   fi
 fi
 
@@ -46,7 +46,7 @@ if [ "$LOOP_SESSIONS" -gt 0 ]; then
   # Show ready beads for each running session
   if command -v bd &> /dev/null; then
     for session in $(tmux list-sessions -F "#{session_name}" 2>/dev/null | grep "^loop-" | sed 's/^loop-//'); do
-      READY_OUTPUT=$(bd ready --label="loop/$session" 2>/dev/null | grep "\[" | wc -l | tr -d ' ')
+      READY_OUTPUT=$(bd ready --label="pipeline/$session" 2>/dev/null | grep "\[" | wc -l | tr -d ' ')
       if [ "$READY_OUTPUT" -gt 0 ] 2>/dev/null; then
         echo ""
         echo "  Ready beads for loop-$session: $READY_OUTPUT"

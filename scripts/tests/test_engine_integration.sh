@@ -25,10 +25,10 @@ _create_test_loop() {
   local loop_name=$2
   local term_type=${3:-"fixed"}
 
-  mkdir -p "$test_dir/loops/$loop_name"
+  mkdir -p "$test_dir/stages/$loop_name"
 
   # Create minimal loop.yaml
-  cat > "$test_dir/loops/$loop_name/loop.yaml" << EOF
+  cat > "$test_dir/stages/$loop_name/loop.yaml" << EOF
 name: $loop_name
 description: Test loop for integration testing
 termination:
@@ -39,7 +39,7 @@ delay: 0
 EOF
 
   # Create minimal prompt.md
-  cat > "$test_dir/loops/$loop_name/prompt.md" << 'EOF'
+  cat > "$test_dir/stages/$loop_name/prompt.md" << 'EOF'
 # Test Loop
 
 Iteration: ${ITERATION}
@@ -50,8 +50,8 @@ Do something and write status.json.
 EOF
 
   # Create default fixture
-  mkdir -p "$test_dir/loops/$loop_name/fixtures"
-  cat > "$test_dir/loops/$loop_name/fixtures/default.txt" << 'EOF'
+  mkdir -p "$test_dir/stages/$loop_name/fixtures"
+  cat > "$test_dir/stages/$loop_name/fixtures/default.txt" << 'EOF'
 # Mock Response
 
 Test iteration completed.

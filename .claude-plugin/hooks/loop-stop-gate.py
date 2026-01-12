@@ -6,7 +6,7 @@ Ensures loop agents:
 1. Ran tests (if applicable)
 2. Committed all changes (including progress file)
 
-Only activates when CLAUDE_LOOP_AGENT=1 is set (by loop.sh).
+Only activates when CLAUDE_PIPELINE_AGENT=1 is set (by loop.sh).
 Regular Claude sessions are unaffected.
 """
 
@@ -41,14 +41,14 @@ def main():
         sys.exit(0)
 
     # Only activate for loop agents
-    if not get_env("CLAUDE_LOOP_AGENT"):
+    if not get_env("CLAUDE_PIPELINE_AGENT"):
         sys.exit(0)
 
     # Prevent infinite loops
     if input_data.get("stop_hook_active", False):
         sys.exit(0)
 
-    session_name = get_env("CLAUDE_LOOP_SESSION", "default")
+    session_name = get_env("CLAUDE_PIPELINE_SESSION", "default")
 
     # Check for uncommitted changes
     _, git_status = run_command(["git", "status", "--porcelain"])

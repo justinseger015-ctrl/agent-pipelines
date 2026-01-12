@@ -278,7 +278,7 @@ hooks:
       when: "${STAGE} == 'plan'"
 ```
 
-### Global (~/.config/loop-agents/hooks.yaml)
+### Global (~/.config/agent-pipelines/hooks.yaml)
 
 ```yaml
 # Applied to all pipelines unless disabled
@@ -427,7 +427,7 @@ hooks:
 ### Webhook URLs
 
 - **Secrets**: Webhook URLs often contain auth tokens—never commit to repo
-- **Environment variables**: Store in `~/.config/loop-agents/secrets.env` or use `${SLACK_WEBHOOK}` from environment
+- **Environment variables**: Store in `~/.config/agent-pipelines/secrets.env` or use `${SLACK_WEBHOOK}` from environment
 - **Validation**: URLs must be HTTPS in production (HTTP allowed for localhost only)
 
 ### Shell Commands
