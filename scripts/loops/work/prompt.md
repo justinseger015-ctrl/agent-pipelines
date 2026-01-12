@@ -2,14 +2,14 @@
 
 ## Context
 
-Session: ${SESSION_NAME}
-Progress file: ${PROGRESS_FILE}
+Read context from: ${CTX}
+Progress file: ${PROGRESS}
 
 ## Workflow
 
 1. **Read progress file** for accumulated context and patterns:
    ```bash
-   cat ${PROGRESS_FILE}
+   cat ${PROGRESS}
    ```
 
 2. **List available stories** for this session:
@@ -97,8 +97,3 @@ bd ready --label=loop/${SESSION_NAME}
 ```
 
 If no stories returned (empty output), all work is complete. Set decision to "stop" in your status.
-
-For legacy compatibility, also output:
-```
-<promise>COMPLETE</promise>
-```

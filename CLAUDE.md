@@ -78,21 +78,22 @@ scripts/
 │   ├── yaml.sh               # YAML→JSON conversion
 │   ├── state.sh              # JSON iteration history + crash recovery
 │   ├── progress.sh           # Accumulated context files
+│   ├── context.sh            # v3 context.json generation
+│   ├── status.sh             # v3 status.json validation
 │   ├── resolve.sh            # Template variable resolution
-│   ├── parse.sh              # Claude output parsing
 │   ├── notify.sh             # Desktop notifications + logging
 │   ├── lock.sh               # Session locking (prevents duplicates)
 │   ├── heartbeat.sh          # Crash detection via periodic heartbeats
-│   └── completions/          # Stopping strategies
-│       ├── beads-empty.sh    # Stop when no beads remain
-│       ├── plateau.sh        # Stop when 2 agents agree
-│       ├── fixed-n.sh        # Stop after N iterations
-│       └── all-items.sh      # Stop after processing items
+│   └── completions/          # Termination strategies
+│       ├── beads-empty.sh    # Stop when queue empty (type: queue)
+│       ├── plateau.sh        # Stop on consensus (type: judgment)
+│       └── fixed-n.sh        # Stop after N iterations (type: fixed)
 ├── loops/                    # Stage definitions (single-stage pipeline configs)
-│   ├── work/                 # Implementation (beads-empty)
-│   ├── improve-plan/         # Plan refinement (plateau)
-│   ├── refine-beads/         # Bead refinement (plateau)
-│   └── idea-wizard/          # Ideation (fixed-n)
+│   ├── work/                 # Implementation (queue termination)
+│   ├── improve-plan/         # Plan refinement (judgment termination)
+│   ├── refine-beads/         # Bead refinement (judgment termination)
+│   ├── elegance/             # Code elegance review (judgment termination)
+│   └── idea-wizard/          # Ideation (fixed termination)
 └── pipelines/                # Multi-stage pipeline configs
     └── *.yaml
 
@@ -113,12 +114,13 @@ All sessions run in `.claude/pipeline-runs/{session}/` with unified state tracki
 
 ### Stages
 
-A stage = prompt template + completion strategy. Stages are defined in `scripts/loops/{name}/`. Each iteration:
-1. Resolves template variables (`${SESSION}`, `${ITERATION}`, `${PROGRESS_FILE}`, etc.)
-2. Executes Claude with resolved prompt
-3. Parses output for structured fields
-4. Updates state file with results
-5. Checks completion condition → stop or continue
+A stage = prompt template + termination strategy. Stages are defined in `scripts/loops/{name}/`. Each iteration:
+1. Generates `context.json` with session metadata, paths, and inputs
+2. Resolves template variables (`${CTX}`, `${PROGRESS}`, `${STATUS}`, etc.)
+3. Executes Claude with resolved prompt
+4. Agent writes `status.json` with decision (continue/stop/error)
+5. Engine saves output snapshot to `iterations/NNN/output.md`
+6. Checks termination condition → stop or continue
 
 ### State vs Progress Files
 
@@ -147,14 +149,24 @@ A stage = prompt template + completion strategy. Stages are defined in `scripts/
 }
 ```
 
-### Completion Strategies
+### Termination Strategies
 
-| Strategy | Implementation | Used By |
-|----------|----------------|---------|
-| `beads-empty` | Checks `bd ready --label=loop/{session}` returns 0 | work stage |
-| `plateau` | Requires 2 consecutive agents to output `PLATEAU: true` | improve-plan, refine-beads |
-| `fixed-n` | Runs exactly N iterations | idea-wizard |
-| `all-items` | Processes each item in a list | batch processing |
+| Type | How It Works | Used By |
+|------|--------------|---------|
+| `queue` | Checks external queue (`bd ready`) is empty | work stage |
+| `judgment` | Requires N consecutive agents to write `decision: stop` | improve-plan, refine-beads, elegance |
+| `fixed` | Runs exactly N iterations | idea-wizard |
+
+**v3 status format:** Agents write `status.json` with:
+```json
+{
+  "decision": "continue",  // or "stop" or "error"
+  "reason": "Explanation",
+  "summary": "What happened this iteration",
+  "work": { "items_completed": [], "files_touched": [] },
+  "errors": []
+}
+```
 
 ### Multi-Stage Pipelines
 
@@ -175,15 +187,25 @@ Available pipelines: `quick-refine.yaml` (3+3), `full-refine.yaml` (5+5), `deep-
 
 ## Template Variables
 
+### v3 Variables (Preferred)
+
 | Variable | Description |
 |----------|-------------|
-| `${SESSION}` / `${SESSION_NAME}` | Session name |
+| `${CTX}` | Path to `context.json` with full iteration context |
+| `${PROGRESS}` | Path to progress file |
+| `${STATUS}` | Path where agent writes `status.json` |
 | `${ITERATION}` | 1-based iteration number |
+| `${SESSION_NAME}` | Session name |
+
+### Legacy Variables (Deprecated, still work)
+
+| Variable | Description |
+|----------|-------------|
+| `${SESSION}` | Same as `${SESSION_NAME}` |
 | `${INDEX}` | 0-based iteration index |
-| `${PROGRESS}` / `${PROGRESS_FILE}` | Path to progress file |
+| `${PROGRESS_FILE}` | Same as `${PROGRESS}` |
 | `${OUTPUT}` | Path to write output (multi-stage pipelines) |
 | `${INPUTS}` | Previous stage outputs (multi-stage pipelines) |
-| `${INPUTS.stage-name}` | Named stage outputs (multi-stage pipelines) |
 
 ## Creating a New Stage
 
@@ -194,13 +216,17 @@ Stages are single-stage pipeline definitions. Create one to add a new pipeline t
 ```yaml
 name: my-stage
 description: What this stage does
-completion: plateau      # beads-empty, plateau, fixed-n, all-items
-delay: 3                 # seconds between iterations
-min_iterations: 1        # for plateau: start checking after this many
-output_parse: plateau:PLATEAU reasoning:REASONING  # extract from output
+
+termination:
+  type: judgment        # queue, judgment, or fixed
+  min_iterations: 2     # for judgment: start checking after this many
+  consensus: 2          # for judgment: consecutive stops needed
+
+delay: 3                # seconds between iterations
 ```
-3. Add `prompt.md` with template using variables above
-4. Run verification: `./scripts/run.sh lint loop {name}`
+3. Add `prompt.md` with template using v3 variables (`${CTX}`, `${PROGRESS}`, `${STATUS}`)
+4. Ensure prompt instructs agent to write `status.json` with decision
+5. Run verification: `./scripts/run.sh lint loop {name}`
 
 ## Recommended Workflow
 

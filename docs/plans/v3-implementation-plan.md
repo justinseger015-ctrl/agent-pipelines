@@ -1423,9 +1423,27 @@ mark_failed() {
 
 ---
 
-### Phase 6: Migration & Cleanup
+### Phase 6: Migration & Cleanup ✅ COMPLETE
 
 **Goal:** Remove deprecated code, update all stages, refresh documentation.
+
+**Completed 2026-01-11:**
+- Created `scripts/tests/test_regression.sh` with 27 tests for v3 schema validation
+- Updated all 5 loop.yaml files to use v3 `termination` block:
+  - work: `termination.type: queue`
+  - improve-plan, elegance, refine-beads: `termination.type: judgment`, `consensus: 2`
+  - idea-wizard: `termination.type: fixed`
+- Updated all 4 prompt.md files to use v3 variables (`${CTX}`, `${PROGRESS}`, `${STATUS}`)
+- Removed legacy `completion`, `output_parse` fields from all loop configs
+- Removed legacy PLATEAU/REASONING output from prompts (kept status.json)
+- Marked `scripts/lib/parse.sh` as DEPRECATED
+- Updated `scripts/lib/validate.sh` to support v3 `termination` schema
+- Updated `CLAUDE.md` with v3 architecture documentation:
+  - New architecture diagram showing context.sh, status.sh
+  - Updated template variables section with v3 preferred variables
+  - Updated stage creation instructions with v3 schema
+  - Updated termination strategies table
+- All 220 tests pass, all 8 lint targets pass
 
 ---
 
@@ -1702,11 +1720,11 @@ For each prompt in `scripts/loops/*/prompt.md`:
 
 #### Success Criteria - Phase 6
 
-- [ ] All 5 stage definitions use new schema
-- [ ] All 4 prompts use `${CTX}`, `${PROGRESS}`, `${STATUS}`
-- [ ] Old variables work but log deprecation warning
-- [ ] CLAUDE.md reflects v3 architecture
-- [ ] Full test: Run each stage type successfully with new format
+- [x] All 5 stage definitions use new schema
+- [x] All 4 prompts use `${CTX}`, `${PROGRESS}`, `${STATUS}`
+- [x] Old variables work but log deprecation warning
+- [x] CLAUDE.md reflects v3 architecture
+- [x] Full test: Run each stage type successfully with new format
 
 ---
 

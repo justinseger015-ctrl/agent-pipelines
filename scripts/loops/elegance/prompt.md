@@ -1,7 +1,7 @@
 # Elegance Review
 
-Session: ${SESSION_NAME}
-Progress file: ${PROGRESS_FILE}
+Read context from: ${CTX}
+Progress file: ${PROGRESS}
 Iteration: ${ITERATION}
 
 You are here to make this codebase stunningly elegant. The kind of code that if you placed it in front of Jeff Dean or Fabrice Bellard, they would be genuinely impressed by how beautiful, simple, and clear it is. Clarity adn simplicity are your north stars.
@@ -12,7 +12,7 @@ This is not a checklist task. You have full latitude to explore, investigate, an
 
 Read the progress file to see what previous iterations discovered:
 ```bash
-cat ${PROGRESS_FILE}
+cat ${PROGRESS}
 ```
 
 ## Exploration
@@ -48,11 +48,5 @@ After completing your exploration, write your status to `${STATUS}`:
 - `"continue"` - There's more territory to explore, patterns to investigate, or insights waiting to surface
 - `"stop"` - You've found what there is to find; further exploration would yield diminishing returns
 - `"error"` - Something blocked your exploration
-
-Also output for legacy compatibility:
-```
-PLATEAU: true/false
-REASONING: [Same as your decision reason]
-```
 
 Use ultrathink.

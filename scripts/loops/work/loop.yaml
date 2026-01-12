@@ -3,6 +3,9 @@
 
 name: work
 description: Implement features from beads until done
-completion: beads-empty
+
+termination:
+  type: queue
+
 check_before: true
 delay: 3

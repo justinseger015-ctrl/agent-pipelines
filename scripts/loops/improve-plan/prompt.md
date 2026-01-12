@@ -1,7 +1,7 @@
 # Plan Improver
 
-Session: ${SESSION_NAME}
-Progress file: ${PROGRESS_FILE}
+Read context from: ${CTX}
+Progress file: ${PROGRESS}
 Iteration: ${ITERATION}
 
 ## Your Task
@@ -12,7 +12,7 @@ You are a senior architect reviewing and improving a plan. Make it better.
 
 Read the progress file and find the plan:
 ```bash
-cat ${PROGRESS_FILE}
+cat ${PROGRESS}
 ```
 
 Find plan files:
@@ -96,9 +96,3 @@ After completing your work, write your status to `${STATUS}`:
 
 Be honest. Don't stop early just to finish faster. Don't continue just to seem thorough.
 The goal is a plan that's *ready to implement*, not *perfect*.
-
-Also output for legacy compatibility:
-```
-PLATEAU: true/false
-REASONING: [Same as your decision reason]
-```

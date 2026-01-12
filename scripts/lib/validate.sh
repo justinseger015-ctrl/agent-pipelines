@@ -60,17 +60,33 @@ validate_loop() {
     warnings+=("Loop name '$loop_name' doesn't match directory name '$name'")
   fi
 
-  # L006: completion field present
+  # L006: termination block present (v3) OR completion field (v2 legacy)
+  local term_type=$(json_get "$config" ".termination.type" "")
   local completion=$(json_get "$config" ".completion" "")
-  if [ -z "$completion" ]; then
-    errors+=("Missing 'completion' field in loop.yaml")
+
+  if [ -z "$term_type" ] && [ -z "$completion" ]; then
+    errors+=("Missing 'termination.type' field in loop.yaml (v3 schema)")
   fi
 
-  # L007: completion strategy exists
-  if [ -n "$completion" ]; then
-    local completion_file="$VALIDATE_SCRIPT_DIR/completions/${completion}.sh"
+  # L007: termination type maps to completion strategy
+  local strategy=""
+  if [ -n "$term_type" ]; then
+    # v3 schema: map termination type to strategy file
+    case "$term_type" in
+      queue) strategy="beads-empty" ;;
+      judgment) strategy="plateau" ;;
+      fixed) strategy="fixed-n" ;;
+      *) strategy="$term_type" ;;
+    esac
+  else
+    # v2 legacy: use completion field directly
+    strategy="$completion"
+  fi
+
+  if [ -n "$strategy" ]; then
+    local completion_file="$VALIDATE_SCRIPT_DIR/completions/${strategy}.sh"
     if [ ! -f "$completion_file" ]; then
-      errors+=("Unknown completion strategy: $completion (file not found: $completion_file)")
+      errors+=("Unknown termination type: $term_type (strategy file not found: $completion_file)")
     fi
   fi
 
@@ -80,21 +96,35 @@ validate_loop() {
     errors+=("Missing prompt file: $prompt_file")
   fi
 
-  # L009: Plateau loops need output_parse with PLATEAU
-  if [ "$completion" = "plateau" ]; then
-    local output_parse=$(json_get "$config" ".output_parse" "")
-    if [ -z "$output_parse" ]; then
-      errors+=("Plateau loops require 'output_parse' field")
-    elif [[ "$output_parse" != *"PLATEAU"* ]]; then
-      errors+=("Plateau loops require 'plateau:PLATEAU' in output_parse")
+  # L009: v3 judgment loops need consensus (v2 plateau needs output_parse - legacy)
+  if [ "$strategy" = "plateau" ]; then
+    if [ -n "$term_type" ]; then
+      # v3: judgment loops should have consensus
+      local consensus=$(json_get "$config" ".termination.consensus" "")
+      if [ -z "$consensus" ]; then
+        warnings+=("Judgment loops should specify 'termination.consensus' (defaulting to 2)")
+      fi
+    else
+      # v2 legacy: plateau loops need output_parse with PLATEAU
+      local output_parse=$(json_get "$config" ".output_parse" "")
+      if [ -z "$output_parse" ]; then
+        errors+=("Plateau loops require 'output_parse' field")
+      elif [[ "$output_parse" != *"PLATEAU"* ]]; then
+        errors+=("Plateau loops require 'plateau:PLATEAU' in output_parse")
+      fi
     fi
   fi
 
-  # L010: Plateau loops should have min_iterations >= 2 (warning)
-  if [ "$completion" = "plateau" ]; then
-    local min_iter=$(json_get "$config" ".min_iterations" "1")
+  # L010: Judgment/plateau loops should have min_iterations >= 2 (warning)
+  if [ "$strategy" = "plateau" ]; then
+    local min_iter
+    if [ -n "$term_type" ]; then
+      min_iter=$(json_get "$config" ".termination.min_iterations" "1")
+    else
+      min_iter=$(json_get "$config" ".min_iterations" "1")
+    fi
     if [ "$min_iter" -lt 2 ]; then
-      warnings+=("Plateau loops should have min_iterations >= 2 (current: $min_iter)")
+      warnings+=("Judgment loops should have min_iterations >= 2 (current: $min_iter)")
     fi
   fi
 

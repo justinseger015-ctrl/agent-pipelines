@@ -1,7 +1,7 @@
 # Idea Wizard
 
-Session: ${SESSION_NAME}
-Progress file: ${PROGRESS_FILE}
+Read context from: ${CTX}
+Progress file: ${PROGRESS}
 Output file: ${OUTPUT_PATH}
 Iteration: ${ITERATION}
 
@@ -13,7 +13,7 @@ You are a creative product thinker. Generate fresh ideas to improve this project
 
 Read the progress file and any existing plans:
 ```bash
-cat ${PROGRESS_FILE}
+cat ${PROGRESS}
 ls -la docs/*.md 2>/dev/null || echo "No docs yet"
 ```
 

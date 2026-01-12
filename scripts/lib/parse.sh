@@ -1,5 +1,9 @@
 #!/bin/bash
-# Output Parsing Utilities
+# DEPRECATED: This file is no longer used in v3
+# In v3, agents write status.json directly instead of using output parsing
+# Kept for reference only - see scripts/lib/status.sh for the v3 approach
+#
+# Output Parsing Utilities (LEGACY)
 # Extracts structured data from Claude's output
 
 # Parse a key:value from output

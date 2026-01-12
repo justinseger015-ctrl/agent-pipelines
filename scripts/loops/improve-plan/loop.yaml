@@ -3,7 +3,10 @@
 
 name: improve-plan
 description: Iteratively improve a plan document until quality plateaus
-completion: plateau
-min_iterations: 2
+
+termination:
+  type: judgment
+  min_iterations: 2
+  consensus: 2
+
 delay: 2
-output_parse: "plateau:PLATEAU reasoning:REASONING"

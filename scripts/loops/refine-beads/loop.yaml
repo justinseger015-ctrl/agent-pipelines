@@ -3,8 +3,11 @@
 
 name: refine-beads
 description: Iteratively refine beads until agent judges them ready
-completion: plateau
-min_iterations: 2
+
+termination:
+  type: judgment
+  min_iterations: 2
+  consensus: 2
+
 delay: 3
-output_parse: "plateau:PLATEAU reasoning:REASONING"
 prompt: prompts/bead-refiner.md

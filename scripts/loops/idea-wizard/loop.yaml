@@ -3,6 +3,9 @@
 
 name: idea-wizard
 description: Generate creative improvement ideas for the project
-completion: fixed-n
+
+termination:
+  type: fixed
+
 delay: 1
 output_path: docs/ideas-${SESSION}.md
