@@ -2,29 +2,65 @@
 # Provider abstraction for agent execution
 # Supports: Claude Code, Codex (OpenAI)
 
+# Normalize provider aliases to canonical name
+# Usage: normalize_provider "$provider"
+# Returns: canonical provider name (claude, codex) or empty string if unknown
+normalize_provider() {
+  case "$1" in
+    claude|claude-code|anthropic) echo "claude" ;;
+    codex|openai) echo "codex" ;;
+    *) echo "" ;;
+  esac
+}
+
 # Check if a provider CLI is available
 # Usage: check_provider "$provider"
 check_provider() {
-  local provider=$1
+  local provider=$(normalize_provider "$1")
+
   case "$provider" in
-    claude|claude-code|anthropic)
+    claude)
       if ! command -v claude &>/dev/null; then
         echo "Error: Claude CLI not found. Install with: npm install -g @anthropic-ai/claude-code" >&2
         return 1
       fi
       ;;
-    codex|openai)
+    codex)
       if ! command -v codex &>/dev/null; then
         echo "Error: Codex CLI not found. Install with: npm install -g @openai/codex" >&2
         return 1
       fi
       ;;
     *)
-      echo "Error: Unknown provider: $provider" >&2
+      echo "Error: Unknown provider: $1" >&2
       return 1
       ;;
   esac
   return 0
+}
+
+# Validate reasoning effort for Codex
+# Usage: validate_reasoning_effort "$effort"
+validate_reasoning_effort() {
+  case "$1" in
+    minimal|low|medium|high) return 0 ;;
+    *)
+      echo "Error: Invalid reasoning effort: $1 (valid: minimal, low, medium, high)" >&2
+      return 1
+      ;;
+  esac
+}
+
+# Validate Codex model
+# Usage: validate_codex_model "$model"
+validate_codex_model() {
+  case "$1" in
+    gpt-5.2-codex|gpt-5-codex|gpt-5.2|gpt-5|o3|o3-mini|o4-mini) return 0 ;;
+    *)
+      echo "Error: Unknown Codex model: $1" >&2
+      return 1
+      ;;
+  esac
 }
 
 # Execute Claude with a prompt
@@ -41,11 +77,16 @@ execute_claude() {
     haiku|claude-haiku) model="haiku" ;;
   esac
 
+  # Use pipefail to capture exit code through pipe
+  set -o pipefail
   if [ -n "$output_file" ]; then
     printf '%s' "$prompt" | claude --model "$model" --dangerously-skip-permissions 2>&1 | tee "$output_file"
   else
     printf '%s' "$prompt" | claude --model "$model" --dangerously-skip-permissions 2>&1
   fi
+  local exit_code=$?
+  set +o pipefail
+  return $exit_code
 }
 
 # Execute Codex with a prompt
@@ -59,6 +100,14 @@ execute_codex() {
   local output_file=$3
   local reasoning=${CODEX_REASONING_EFFORT:-"high"}
 
+  # Validate model
+  validate_codex_model "$model" || return 1
+
+  # Validate reasoning effort
+  validate_reasoning_effort "$reasoning" || return 1
+
+  # Use pipefail to capture exit code through pipe
+  set -o pipefail
   if [ -n "$output_file" ]; then
     codex exec \
       --dangerously-bypass-approvals-and-sandbox \
@@ -72,6 +121,9 @@ execute_codex() {
       -c "model_reasoning_effort=\"$reasoning\"" \
       "$prompt" 2>&1
   fi
+  local exit_code=$?
+  set +o pipefail
+  return $exit_code
 }
 
 # Execute an agent with provider abstraction
@@ -82,11 +134,19 @@ execute_agent() {
   local model=$3
   local output_file=$4
 
-  case "$provider" in
-    claude|claude-code|anthropic)
+  # Validate prompt is not empty
+  if [ -z "$prompt" ]; then
+    echo "Error: Empty prompt provided to execute_agent" >&2
+    return 1
+  fi
+
+  # Normalize and dispatch
+  local normalized=$(normalize_provider "$provider")
+  case "$normalized" in
+    claude)
       execute_claude "$prompt" "$model" "$output_file"
       ;;
-    codex|openai)
+    codex)
       execute_codex "$prompt" "$model" "$output_file"
       ;;
     *)

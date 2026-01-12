@@ -145,6 +145,9 @@ run_stage() {
 
   load_stage "$stage_type" || return 1
 
+  # Check provider is available (once at session start, not per iteration)
+  check_provider "$STAGE_PROVIDER" || return 1
+
   # Source completion strategy
   local completion_script="$LIB_DIR/completions/${STAGE_COMPLETION}.sh"
   if [ ! -f "$completion_script" ]; then
@@ -231,9 +234,6 @@ run_stage() {
 
     # Resolve prompt
     local resolved_prompt=$(resolve_prompt "$STAGE_PROMPT" "$vars_json")
-
-    # Check provider is available
-    check_provider "$STAGE_PROVIDER" || return 1
 
     # Execute agent
     set +e
@@ -409,6 +409,9 @@ run_pipeline() {
       [ -z "$stage_completion" ] && stage_completion="$STAGE_COMPLETION"
     fi
 
+    # Check provider is available (once per stage, not per iteration)
+    check_provider "$stage_provider" || return 1
+
     # Initialize progress for this stage
     local progress_file=$(init_stage_progress "$stage_dir")
 
@@ -472,9 +475,6 @@ run_pipeline() {
 
       # Resolve prompt
       local resolved_prompt=$(resolve_prompt "$stage_prompt" "$vars_json")
-
-      # Check provider is available
-      check_provider "$stage_provider" || return 1
 
       # Execute agent
       set +e
