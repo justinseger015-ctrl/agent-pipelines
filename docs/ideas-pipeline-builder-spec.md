@@ -108,3 +108,153 @@ Display to user: "I'm 85% confident in this architecture. Key uncertainty: stage
 **Why now:** The pipeline-builder empowers users to create custom stages with arbitrary configurations. Without measurement, they can't optimize. A/B testing turns pipeline design from art into science.
 
 ---
+
+## Ideas from pipeline-builder-spec - Iteration 2
+
+> Focus: Operational reliability, cost control, and production-readiness for pipeline execution
+
+---
+
+### 6. Human-in-the-Loop Checkpoints
+
+**Problem:** Once a pipeline starts, it runs to completion with no opportunity for human intervention. A user can't review stage outputs before the next stage begins. This is risky for expensive pipelines or when early stages might go off-track.
+
+**Solution:** Add checkpoint configuration to pipeline definitions:
+```yaml
+stages:
+  - name: architecture-design
+    loop: design
+    runs: 5
+    checkpoint: true  # Pause after this stage
+
+  - name: implementation
+    loop: work
+    runs: 10
+```
+When a checkpoint is reached:
+- Engine pauses and notifies user (terminal + desktop notification)
+- User reviews outputs from completed stage
+- Commands: `./scripts/run.sh continue {session}` or `./scripts/run.sh abort {session}`
+- Optional: `--unattended` flag skips all checkpoints
+
+**Why now:** The pipeline-builder enables users to create arbitrary multi-stage pipelines. Some will be expensive (many iterations with Opus). Checkpoints let users validate early stages before committing to full execution. Production pipelines need this.
+
+---
+
+### 7. Token Budget Allocation
+
+**Problem:** Users set max_iterations per stage but have no way to control total token spend. A 5-stage pipeline could consume $50 in tokens before anyone notices. Cost overruns are only discovered after the fact.
+
+**Solution:** Add budget configuration at pipeline and stage levels:
+```yaml
+name: expensive-pipeline
+budget:
+  total_tokens: 500000        # Hard cap for entire pipeline
+  per_stage: 100000           # Default per-stage cap
+  alert_threshold: 0.8        # Warn at 80% usage
+
+stages:
+  - name: complex-analysis
+    loop: analyze
+    budget:
+      tokens: 200000          # Override: this stage gets more
+```
+Runtime behavior:
+- Engine tracks token usage from Claude API responses
+- Pause and notify when alert_threshold reached
+- Hard stop when budget exhausted (graceful termination)
+- After pipeline: show token usage breakdown by stage
+
+**Why now:** The pipeline-builder democratizes complex pipeline creation. Users who don't understand token economics will create expensive configurations. Budget guardrails prevent surprise bills. Essential for team adoption.
+
+---
+
+### 8. Stage Output Caching and Replay
+
+**Problem:** Re-running a pipeline means re-doing all stages from scratch. If you want to tweak stage 3 of a 4-stage pipeline, you must run stages 1-2 again. This wastes tokens and time, especially for deterministic early stages.
+
+**Solution:** Add caching infrastructure:
+```bash
+# Cache stage outputs (stored in .claude/cache/)
+./scripts/run.sh pipeline full-refine.yaml my-session --cache
+
+# Replay with cached stage 1, re-run stages 2+
+./scripts/run.sh pipeline full-refine.yaml my-session --from-stage=2
+
+# Invalidate specific stage cache
+./scripts/run.sh cache clear my-session stage-1
+```
+Cache format:
+- `.claude/cache/{session}/{stage}/output.json` - Serialized stage outputs
+- `.claude/cache/{session}/{stage}/inputs.hash` - Hash of inputs (for cache invalidation)
+- Auto-invalidate when stage config or inputs change
+
+**Why now:** The pipeline-builder encourages experimentation with multi-stage configurations. Without caching, every experiment re-runs everything. Caching enables rapid iteration on later stages while preserving expensive early-stage work.
+
+---
+
+### 9. Stage Timeout Configuration
+
+**Problem:** A stage can run indefinitely if an agent gets stuck or the judgment termination never reaches consensus. There's no safety valve. A stuck pipeline silently consumes resources until someone notices.
+
+**Solution:** Add timeout configuration:
+```yaml
+name: my-stage
+termination:
+  type: judgment
+  timeout:
+    per_iteration: 300       # 5 minutes per iteration
+    total: 1800              # 30 minutes for entire stage
+    action: error            # 'error' | 'force_stop' | 'notify'
+```
+Timeout behavior:
+- `error`: Mark stage as failed, pipeline stops
+- `force_stop`: Write `decision: stop` and continue (graceful degradation)
+- `notify`: Alert user but keep running
+
+Also add pipeline-level timeout:
+```yaml
+name: my-pipeline
+timeout: 7200  # 2 hours total
+```
+
+**Why now:** The pipeline-builder creates stages that may behave unexpectedly. Runaway iterations are a real risk with judgment termination (what if agents never agree?). Timeouts are table-stakes for production reliability.
+
+---
+
+### 10. One-Click Stage Cloning with Variants
+
+**Problem:** Users often want "elegance but stricter" or "refine-beads but for security". Currently they must manually copy files, modify YAML, edit prompts. This friction discourages customization.
+
+**Solution:** Add clone command with variant configuration:
+```bash
+# Clone a stage with modifications
+./scripts/run.sh stage clone elegance elegance-strict \
+  --consensus=3 \
+  --min-iterations=5 \
+  --model=opus
+
+# Interactive clone (asks what to change)
+./scripts/run.sh stage clone work work-security
+```
+For complex modifications:
+```yaml
+# .claude/stage-variants/elegance-strict.yaml
+base: elegance
+changes:
+  termination:
+    consensus: 3
+    min_iterations: 5
+  prompt:
+    prepend: |
+      IMPORTANT: Be extremely strict in your evaluation.
+      Reject any code that is merely "good enough".
+```
+Benefits:
+- Preserves relationship to base stage (for updates)
+- Diff-based tracking of customizations
+- Can list all variants: `./scripts/run.sh stage list --variants`
+
+**Why now:** The pipeline-builder's architecture agent recommends existing stages. Users will want to tweak them. Making customization frictionless multiplies the value of each base stage. Variants are the extension mechanism.
+
+---
