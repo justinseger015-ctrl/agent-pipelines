@@ -1,159 +1,148 @@
 ---
 name: sessions
-description: Run and manage autonomous loop agents and pipelines in tmux sessions. Start sessions, monitor output, attach/detach, list running sessions, kill sessions, and clean up stale work. Use when running autonomous tasks in the background.
+description: Manage autonomous loop agent sessions running in tmux background. Start, list, monitor, attach, kill, and clean up pipeline sessions.
 ---
 
-## CRITICAL: Everything Is A Pipeline
+<objective>
+Provide a unified interface for managing loop agent sessions. Sessions are autonomous pipelines that run in tmux, executing iteratively until completion. This skill handles the full lifecycle: starting new sessions, monitoring progress, managing conflicts, and cleaning up resources.
+</objective>
 
-A "loop" is a **single-stage pipeline**. The unified engine treats them identically.
+<essential_principles>
+## Everything Is A Pipeline
 
-- **Single-stage session** = what we call a "loop" (e.g., `work`, `improve-plan`)
-- **Multi-stage session** = what we call a "pipeline" (e.g., `full-refine.yaml`)
+A "loop" is a single-stage pipeline. The unified engine treats them identically.
+- **Single-stage**: `./scripts/run.sh work auth 25`
+- **Multi-stage**: `./scripts/run.sh pipeline full-refine.yaml myproject`
 
-All sessions run in `.claude/pipeline-runs/{session}/` with the same state tracking.
+Both use the same directory structure, state files, and lock management.
 
-## What This Skill Does
+## Session Resources
 
-Runs autonomous sessions in tmux background. You can:
-- Start any session (single-stage loops OR multi-stage pipelines)
-- Monitor running sessions without attaching
-- Attach to watch live, detach to continue in background
-- List all running sessions with status
-- Kill sessions
-- Clean up stale or orphaned sessions
+Each session creates three resources that must stay synchronized:
+1. **Lock file** (`.claude/locks/{session}.lock`) - Prevents duplicates
+2. **State file** (`.claude/pipeline-runs/{session}/state.json`) - Tracks progress
+3. **tmux session** (`loop-{session}`) - Runs the actual process
 
-## Session Lifecycle
+Problems occur when these get out of sync (crashes, force-kills, network issues).
 
-Every session runs in an isolated directory with its own state. The engine automatically tracks everything.
+## Naming Conventions
 
-**Run Directory:** `.claude/pipeline-runs/{session}/`
+- Session names: lowercase, hyphens only (`auth`, `billing-refactor`)
+- tmux sessions: `loop-{session}`
+- Beads labels: `loop/{session}`
 
-Each session gets:
-- `state.json` - Iteration tracking, crash recovery info
-- `progress-{session}.md` - Accumulated context for fresh agents
-- Lock file at `.claude/locks/{session}.lock`
+## Validation First
 
-**Check session status:**
-```bash
-./scripts/run.sh status {session-name}
+Always check prerequisites before action:
+- Stage/pipeline exists
+- No conflicts (or user resolved them)
+- Required dependencies available
+</essential_principles>
+
+<usage>
 ```
+/sessions                    # Interactive - choose action
+/sessions start              # Start a new session
+/sessions list               # Show all running sessions
+/sessions monitor auth       # Peek at session output
+/sessions attach auth        # Connect to watch live
+/sessions kill auth          # Terminate a session
+/sessions cleanup            # Handle stale resources
+/sessions status auth        # Check session status
+```
+</usage>
 
-**Naming Conventions:**
-- Loops: `loop-{feature-name}` (lowercase, hyphens)
-- Pipelines: `pipeline-{name}` (lowercase, hyphens)
-
-**Stale Session Warning:** Sessions running > 2 hours should trigger a warning.
-
-**Never Leave Orphans:** Before ending a conversation where you started a session, remind the user about running sessions.
-
-## Intake
-
-Use the AskUserQuestion tool:
+<intake>
+If no subcommand provided, use AskUserQuestion:
 
 ```json
 {
   "questions": [{
-    "question": "What would you like to do?",
+    "question": "What would you like to do with loop sessions?",
     "header": "Action",
     "options": [
-      {"label": "Start Session", "description": "Run a loop or pipeline in tmux background"},
-      {"label": "Monitor", "description": "Peek at output from a running session"},
-      {"label": "Attach", "description": "Connect to watch a session live"},
-      {"label": "List", "description": "Show all running sessions"},
+      {"label": "Start", "description": "Launch a new session (single-stage or multi-stage pipeline)"},
+      {"label": "List", "description": "Show all running sessions with status"},
+      {"label": "Monitor", "description": "Peek at session output without attaching"},
+      {"label": "Attach", "description": "Connect to watch session live (read-only)"},
       {"label": "Kill", "description": "Terminate a running session"},
-      {"label": "Cleanup", "description": "Find and handle stale sessions"}
+      {"label": "Cleanup", "description": "Handle stale locks, orphaned sessions, zombies"}
     ],
     "multiSelect": false
   }]
 }
 ```
+</intake>
 
-**Wait for response before proceeding.**
-
-## Routing
-
+<routing>
 | Response | Workflow |
 |----------|----------|
-| "Start Session" | `workflows/start.md` |
-| "Monitor" | `workflows/monitor.md` |
-| "Attach" | `workflows/attach.md` |
-| "List" | `workflows/list.md` |
-| "Kill" | `workflows/kill.md` |
-| "Cleanup" | `workflows/cleanup.md` |
+| "Start" or `start` | `workflows/start-session.md` |
+| "List" or `list` | `workflows/list-sessions.md` |
+| "Monitor" or `monitor` | `workflows/monitor-session.md` |
+| "Attach" or `attach` | `workflows/attach-session.md` |
+| "Kill" or `kill` | `workflows/kill-session.md` |
+| "Cleanup" or `cleanup` | `workflows/cleanup.md` |
+| `status {name}` | `workflows/check-status.md` |
+
+**Intent-based routing (if user provides clear intent):**
+- "start a work loop", "run pipeline" → `workflows/start-session.md`
+- "what's running", "show sessions" → `workflows/list-sessions.md`
+- "check on auth", "peek at" → `workflows/monitor-session.md`
+- "watch auth live", "attach to" → `workflows/attach-session.md`
+- "stop auth", "kill session" → `workflows/kill-session.md`
+- "fix stale", "clear locks", "cleanup" → `workflows/cleanup.md`
 
 **After reading the workflow, follow it exactly.**
+</routing>
 
-## Quick Reference
-
+<quick_start>
+**Start a work session:**
 ```bash
-# Discover available stages (single-stage options)
-ls scripts/loops/
-
-# Discover available pipelines (multi-stage options)
-ls scripts/pipelines/*.yaml
-
-# Start a single-stage session (all equivalent)
-tmux new-session -d -s loop-NAME -c "$(pwd)" "./scripts/run.sh TYPE NAME MAX"
-tmux new-session -d -s loop-NAME -c "$(pwd)" "./scripts/run.sh loop TYPE NAME MAX"
-
-# Start a multi-stage session
-tmux new-session -d -s loop-NAME -c "$(pwd)" "./scripts/run.sh pipeline FILE.yaml NAME"
-
-# Start with force (override existing lock)
-tmux new-session -d -s loop-NAME -c "$(pwd)" "./scripts/run.sh TYPE NAME MAX --force"
-
-# Resume a crashed session
-tmux new-session -d -s loop-NAME -c "$(pwd)" "./scripts/run.sh TYPE NAME MAX --resume"
-
-# Check session status
-./scripts/run.sh status NAME
-
-# Peek at output (safe, doesn't attach)
-tmux capture-pane -t SESSION_NAME -p | tail -50
-
-# Attach to session
-tmux attach -t SESSION_NAME
-# Detach: Ctrl+b, then d
-
-# List sessions
-tmux list-sessions 2>/dev/null | grep -E "^(loop-|pipeline-)"
-
-# Kill session
-tmux kill-session -t SESSION_NAME
-
-# Check session state (all sessions use unified path)
-cat .claude/pipeline-runs/NAME/state.json | jq '.status'
-
-# Check session locks
-ls .claude/locks/
-cat .claude/locks/NAME.lock | jq
-
-# Clear stale lock
-rm .claude/locks/NAME.lock
+./scripts/run.sh work my-session 25
 ```
 
-## Reference Index
+**Check what's running:**
+```bash
+tmux list-sessions 2>/dev/null | grep -E "^loop-"
+```
 
-| Reference | Purpose |
-|-----------|---------|
-| references/tmux.md | Complete tmux command reference |
-| references/state-files.md | State file operations and schema |
+**Peek at output:**
+```bash
+tmux capture-pane -t loop-{session} -p | tail -50
+```
 
-## Workflows Index
+**Full status check:**
+```bash
+./scripts/run.sh status {session}
+```
+</quick_start>
 
+<reference_index>
+All domain knowledge in `references/`:
+
+**Commands:** commands.md - All bash commands for session management
+**Stage Types:** Available via `ls scripts/loops/`
+**Pipelines:** Available via `ls scripts/pipelines/*.yaml`
+</reference_index>
+
+<workflows_index>
 | Workflow | Purpose |
 |----------|---------|
-| start.md | Start any session (single-stage or multi-stage) in tmux |
-| monitor.md | Safely peek at output |
-| attach.md | Connect to watch live |
-| list.md | Show all running sessions |
-| kill.md | Terminate a session |
-| cleanup.md | Find and handle stale sessions |
+| start-session.md | Launch a new single-stage or multi-stage session |
+| list-sessions.md | Show all running sessions with status |
+| monitor-session.md | Peek at session output without attaching |
+| attach-session.md | Connect to watch session live |
+| kill-session.md | Terminate a running session |
+| cleanup.md | Handle stale locks, orphaned sessions, zombies |
+| check-status.md | Get detailed status of a specific session |
+</workflows_index>
 
-## Success Criteria
-
-- [ ] User selected action (or provided direct command)
-- [ ] Correct workflow executed
-- [ ] Session state file updated appropriately
-- [ ] User shown clear instructions for next steps
-- [ ] No orphaned sessions left untracked
+<success_criteria>
+Any session operation should:
+- [ ] Validate all prerequisites
+- [ ] Handle edge cases (crashes, conflicts, stale state)
+- [ ] Provide clear feedback on what happened
+- [ ] Offer logical next actions
+- [ ] Not leave orphaned resources
+</success_criteria>

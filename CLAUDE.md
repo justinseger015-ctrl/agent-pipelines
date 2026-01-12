@@ -42,7 +42,7 @@ Skills are Claude Code extensions in `skills/`. Each provides specialized workfl
 
 | Skill | Invocation | Purpose |
 |-------|------------|---------|
-| **sessions** | `/loop-agents:sessions` | Start/manage pipelines in tmux |
+| **sessions** | `/sessions` | Start/manage pipelines in tmux |
 | **plan-refinery** | `/plan-refinery` | Iterative planning with Opus subagents |
 | **create-prd** | `/loop-agents:create-prd` | Generate PRDs through adaptive questioning |
 | **create-tasks** | `/loop-agents:create-tasks` | Break PRD into executable beads |
@@ -61,7 +61,7 @@ Commands in `commands/` provide user-facing interfaces.
 
 | Command | Usage | Description |
 |---------|-------|-------------|
-| `/loop` | `/loop`, `/loop status`, `/loop attach NAME` | Orchestration hub: plan, status, management |
+| `/sessions` | `/sessions`, `/sessions list`, `/sessions start` | Session management: start, list, monitor, kill, cleanup |
 | `/work` | `/work`, `/work auth` | Launch work pipelines |
 | `/refine` | `/refine`, `/refine quick`, `/refine deep` | Run refinement pipelines |
 | `/ideate` | `/ideate`, `/ideate 3` | Generate improvement ideas |

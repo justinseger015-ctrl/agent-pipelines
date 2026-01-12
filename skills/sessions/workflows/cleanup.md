@@ -1,314 +1,207 @@
 # Workflow: Cleanup Sessions
 
-Find and handle stale, orphaned, or completed sessions and lock files.
+Handle stale locks, orphaned tmux sessions, and zombie state files.
 
-## Step 1: Gather Session Data
+<required_reading>
+**Read these reference files NOW:**
+1. references/commands.md
+</required_reading>
+
+<process>
+## Step 1: Scan for Problems
+
+Check all three resource types for inconsistencies:
 
 ```bash
-# Get all tmux sessions
-TMUX_SESSIONS=$(tmux list-sessions -F "#{session_name}" 2>/dev/null | grep -E "^(loop-|pipeline-)" || echo "")
+echo "Scanning for session problems..."
 
-# Load state file
-if [ -f .claude/loop-sessions.json ]; then
-  STATE=$(cat .claude/loop-sessions.json)
-else
-  STATE='{"sessions":{}}'
-fi
-
-# Get all lock files
-LOCK_FILES=$(ls .claude/locks/*.lock 2>/dev/null || echo "")
+# Collect all known sessions
+all_sessions=$(
+    (tmux list-sessions 2>/dev/null | grep -E "^loop-" | cut -d: -f1 | sed 's/^loop-//';
+     ls .claude/locks/*.lock 2>/dev/null | xargs -n1 basename | sed 's/\.lock$//';
+     ls .claude/pipeline-runs/*/state.json 2>/dev/null | xargs -n1 dirname | xargs -n1 basename) | sort -u
+)
 ```
 
-## Step 2: Identify Orphaned Sessions
-
-Sessions in tmux but not in our state file:
+### Identify Problem Types
 
 ```bash
-TRACKED=$(echo "$STATE" | jq -r '.sessions | keys[]')
+problems=()
 
-ORPHANS=""
-for sess in $TMUX_SESSIONS; do
-  if ! echo "$TRACKED" | grep -q "^$sess$"; then
-    ORPHANS="$ORPHANS $sess"
-  fi
+for session in $all_sessions; do
+    has_tmux=$(tmux has-session -t "loop-${session}" 2>/dev/null && echo "yes" || echo "no")
+    has_lock=$(test -f ".claude/locks/${session}.lock" && echo "yes" || echo "no")
+    has_state=$(test -f ".claude/pipeline-runs/${session}/state.json" && echo "yes" || echo "no")
+
+    # Check for stale lock (lock exists, PID dead)
+    if [ "$has_lock" = "yes" ]; then
+        pid=$(jq -r .pid ".claude/locks/${session}.lock")
+        if ! kill -0 "$pid" 2>/dev/null; then
+            problems+=("STALE_LOCK:${session}")
+        fi
+    fi
+
+    # Check for orphaned tmux (tmux exists, no lock)
+    if [ "$has_tmux" = "yes" ] && [ "$has_lock" = "no" ]; then
+        problems+=("ORPHAN_TMUX:${session}")
+    fi
+
+    # Check for zombie state (state says running, but tmux gone)
+    if [ "$has_state" = "yes" ] && [ "$has_tmux" = "no" ]; then
+        state_status=$(jq -r '.status // ""' ".claude/pipeline-runs/${session}/state.json")
+        if [ "$state_status" = "running" ]; then
+            problems+=("ZOMBIE_STATE:${session}")
+        fi
+    fi
 done
 ```
 
-## Step 3: Identify Stale Sessions
-
-Sessions running > 2 hours:
-
-```bash
-echo "$STATE" | jq -r '
-  .sessions | to_entries[] |
-  select(.value.status == "running") |
-  "\(.key)|\(.value.started_at)"
-' | while IFS="|" read name started; do
-  START_EPOCH=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$started" "+%s" 2>/dev/null || date -d "$started" "+%s" 2>/dev/null || echo "0")
-  NOW_EPOCH=$(date "+%s")
-  AGE_MINS=$(( (NOW_EPOCH - START_EPOCH) / 60 ))
-  if [ $AGE_MINS -gt 120 ]; then
-    echo "STALE|$name|$AGE_MINS"
-  fi
-done
-```
-
-## Step 4: Identify Zombie State Entries
-
-Sessions in state file marked "running" but not in tmux:
-
-```bash
-echo "$STATE" | jq -r '
-  .sessions | to_entries[] |
-  select(.value.status == "running") |
-  .key
-' | while read name; do
-  if ! tmux has-session -t "$name" 2>/dev/null; then
-    echo "ZOMBIE: $name"
-  fi
-done
-```
-
-## Step 4b: Identify Stale Locks
-
-Lock files where the PID is no longer running:
-
-```bash
-for lock_file in .claude/locks/*.lock; do
-  [ -f "$lock_file" ] || continue
-  pid=$(jq -r '.pid // empty' "$lock_file" 2>/dev/null)
-  session=$(jq -r '.session // empty' "$lock_file" 2>/dev/null)
-  started=$(jq -r '.started_at // empty' "$lock_file" 2>/dev/null)
-
-  if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
-    echo "STALE_LOCK: $session (PID $pid, started $started)"
-  fi
-done
-```
-
-## Step 5: Present Findings
-
-Show what was found:
+## Step 2: Display Problems Found
 
 ```
-Cleanup Report
-==============
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SESSION CLEANUP SCAN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Orphaned Sessions (in tmux, not tracked):
-{list orphans or "None found"}
+Problems found: ${#problems[@]}
 
-Stale Sessions (running > 2 hours):
-{list stale with ages or "None found"}
+STALE LOCKS (lock exists but process dead):
+  • auth - PID 12345 (died ~2h ago)
+  • old-feature - PID 67890 (died ~1d ago)
 
-Zombie Entries (in state file, not running):
-{list zombies or "None found"}
+ORPHANED TMUX (tmux without lock/state):
+  • mystery-session
 
-Stale Locks (lock file exists, PID dead):
-{list stale locks or "None found"}
+ZOMBIE STATE (state says "running" but tmux gone):
+  • billing - iteration 3/5
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-## Step 6: Handle Orphans
+### No Problems Found
 
-If orphans found:
+```
+✓ No session problems found.
+
+All sessions are healthy:
+  • auth (running, iteration 5/25)
+  • billing (complete)
+```
+
+## Step 3: Offer Cleanup Actions
+
+If problems found, use AskUserQuestion:
 
 ```json
 {
   "questions": [{
-    "question": "Found {N} orphaned sessions. What should we do?",
-    "header": "Orphans",
+    "question": "How would you like to handle these problems?",
+    "header": "Cleanup",
     "options": [
-      {"label": "Kill all orphans", "description": "Terminate and don't track"},
-      {"label": "Add to tracking", "description": "Start tracking these sessions"},
-      {"label": "Review each", "description": "Decide per session"},
-      {"label": "Leave them", "description": "Don't touch orphans"}
+      {"label": "Fix All", "description": "Automatically clean up all problems (Recommended)"},
+      {"label": "Interactive", "description": "Ask about each problem individually"},
+      {"label": "Stale Locks Only", "description": "Just remove stale lock files"},
+      {"label": "Cancel", "description": "Don't make any changes"}
     ],
     "multiSelect": false
   }]
 }
 ```
 
-**Kill all orphans:**
+## Step 4: Execute Cleanup
+
+### Fix Stale Locks
+
 ```bash
-for sess in $ORPHANS; do
-  tmux kill-session -t "$sess"
-  echo "Killed: $sess"
+for problem in "${problems[@]}"; do
+    if [[ "$problem" == STALE_LOCK:* ]]; then
+        session="${problem#STALE_LOCK:}"
+
+        # Remove the stale lock
+        rm ".claude/locks/${session}.lock"
+        echo "✓ Removed stale lock for '${session}'"
+
+        # Check if it can be resumed
+        if [ -f ".claude/pipeline-runs/${session}/state.json" ]; then
+            iteration=$(jq -r .iteration ".claude/pipeline-runs/${session}/state.json")
+            loop_type=$(jq -r .loop_type ".claude/pipeline-runs/${session}/state.json")
+            echo "  → Can resume: ./scripts/run.sh ${loop_type} ${session} N --resume"
+        fi
+    fi
 done
 ```
 
-**Add to tracking:**
-```bash
-for sess in $ORPHANS; do
-  TYPE="loop"
-  [[ "$sess" == pipeline-* ]] && TYPE="pipeline"
-
-  STATE=$(echo "$STATE" | jq --arg name "$sess" \
-    --arg type "$TYPE" \
-    --arg started "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    --arg path "$(pwd)" \
-    '.sessions[$name] = {
-      "type": $type,
-      "started_at": $started,
-      "project_path": $path,
-      "status": "running",
-      "note": "recovered from orphan"
-    }')
-done
-echo "$STATE" > .claude/loop-sessions.json
-```
-
-**Review each:** Loop through and ask about each one individually.
-
-## Step 7: Handle Stale Sessions
-
-If stale found:
-
-```json
-{
-  "questions": [{
-    "question": "Found {N} sessions running > 2 hours. What should we do?",
-    "header": "Stale",
-    "options": [
-      {"label": "Kill all stale", "description": "Terminate long-running sessions"},
-      {"label": "Review each", "description": "Decide per session"},
-      {"label": "Leave them", "description": "They might still be working"}
-    ],
-    "multiSelect": false
-  }]
-}
-```
-
-For each stale session, offer to:
-1. Monitor it (see what it's doing)
-2. Kill it
-3. Leave it running
-
-## Step 8: Handle Zombies
-
-Zombie entries are state file records for sessions that aren't running. These need to be updated:
+### Fix Orphaned tmux
 
 ```bash
-echo "$STATE" | jq '
-  .sessions |= with_entries(
-    if .value.status == "running" then
-      .value.status = "unknown_termination" |
-      .value.cleaned_at = now | todate
-    else
-      .
-    end
-  )
-' > .claude/loop-sessions.json
-```
+for problem in "${problems[@]}"; do
+    if [[ "$problem" == ORPHAN_TMUX:* ]]; then
+        session="${problem#ORPHAN_TMUX:}"
 
-Or offer to remove them entirely:
+        # Ask what to do with orphan
+        echo "Orphaned tmux session: ${session}"
+        echo "Options:"
+        echo "  1. Kill it (no useful data)"
+        echo "  2. Leave it (investigate manually)"
 
-```json
-{
-  "questions": [{
-    "question": "Found {N} zombie entries. What should we do?",
-    "header": "Zombies",
-    "options": [
-      {"label": "Mark as terminated", "description": "Update status to 'unknown_termination'"},
-      {"label": "Remove entries", "description": "Delete from state file entirely"},
-      {"label": "Leave them", "description": "Don't modify state file"}
-    ],
-    "multiSelect": false
-  }]
-}
-```
-
-## Step 8b: Handle Stale Locks
-
-If stale locks found:
-
-```json
-{
-  "questions": [{
-    "question": "Found {N} stale lock files (PIDs no longer running). What should we do?",
-    "header": "Stale Locks",
-    "options": [
-      {"label": "Remove all stale locks", "description": "Delete lock files for dead processes"},
-      {"label": "Review each", "description": "Decide per lock file"},
-      {"label": "Leave them", "description": "Don't touch lock files"}
-    ],
-    "multiSelect": false
-  }]
-}
-```
-
-**Remove all stale locks:**
-```bash
-for lock_file in .claude/locks/*.lock; do
-  [ -f "$lock_file" ] || continue
-  pid=$(jq -r '.pid // empty' "$lock_file" 2>/dev/null)
-  session=$(jq -r '.session // empty' "$lock_file" 2>/dev/null)
-
-  if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
-    echo "Removing stale lock: $session (PID $pid)"
-    rm -f "$lock_file"
-  fi
+        # If Fix All, default to kill
+        tmux kill-session -t "loop-${session}"
+        echo "✓ Killed orphaned tmux session '${session}'"
+    fi
 done
 ```
 
-## Step 9: Prune Old Entries
+### Fix Zombie State
 
-Optionally clean up old completed/killed entries:
-
-```json
-{
-  "questions": [{
-    "question": "Remove old completed entries from state file? (> 7 days old)",
-    "header": "Prune",
-    "options": [
-      {"label": "Yes, clean up", "description": "Remove entries older than 7 days"},
-      {"label": "No, keep all", "description": "Preserve history"}
-    ],
-    "multiSelect": false
-  }]
-}
-```
-
-If yes:
 ```bash
-CUTOFF=$(date -v-7d +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -d "7 days ago" +%Y-%m-%dT%H:%M:%SZ)
+for problem in "${problems[@]}"; do
+    if [[ "$problem" == ZOMBIE_STATE:* ]]; then
+        session="${problem#ZOMBIE_STATE:}"
 
-jq --arg cutoff "$CUTOFF" '
-  .sessions |= with_entries(
-    select(
-      .value.status == "running" or
-      (.value.completed_at // .value.killed_at // .value.started_at) > $cutoff
-    )
-  )
-' .claude/loop-sessions.json > .claude/loop-sessions.json.tmp
-mv .claude/loop-sessions.json.tmp .claude/loop-sessions.json
+        # Update state to reflect unknown termination
+        jq '.status = "unknown_termination" | .terminated_at = now | .terminated_at |= todate' \
+            ".claude/pipeline-runs/${session}/state.json" > /tmp/state.json \
+            && mv /tmp/state.json ".claude/pipeline-runs/${session}/state.json"
+
+        echo "✓ Updated zombie state for '${session}' (status: unknown_termination)"
+        echo "  → Can resume: ./scripts/run.sh ${loop_type} ${session} N --resume"
+    fi
+done
 ```
 
-## Step 10: Final Summary
+## Step 5: Summary Report
 
 ```
-Cleanup Complete
-================
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLEANUP COMPLETE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Actions taken:
-- Killed {X} orphaned sessions
-- Killed {Y} stale sessions
-- Updated {Z} zombie entries
-- Removed {L} stale locks
-- Pruned {W} old entries
+Fixed:
+  ✓ 2 stale locks removed
+  ✓ 1 orphaned tmux killed
+  ✓ 1 zombie state updated
 
-Current state:
-- Running sessions: {count}
-- Active locks: {count}
-- State file entries: {count}
+Sessions available to resume:
+  • auth:        ./scripts/run.sh work auth 25 --resume
+  • old-feature: ./scripts/run.sh work old-feature 15 --resume
 
-Run '/loop-agents:sessions → List' to see current status.
+Next actions:
+  • List sessions: /loop-agents:sessions list
+  • Start new:     /loop-agents:sessions start
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+</process>
 
-## Success Criteria
-
-- [ ] Orphans identified and handled
-- [ ] Stale sessions identified and handled
-- [ ] Zombie entries cleaned up
-- [ ] Stale locks cleaned up
-- [ ] State file is consistent with tmux reality
-- [ ] Lock files are consistent with running processes
-- [ ] User informed of all actions taken
+<success_criteria>
+Cleanup workflow is complete when:
+- [ ] All three resource types scanned
+- [ ] Problems categorized (stale locks, orphans, zombies)
+- [ ] Clear report shown of problems found
+- [ ] User confirmed cleanup action
+- [ ] Stale locks removed
+- [ ] Orphaned tmux sessions killed
+- [ ] Zombie states updated
+- [ ] Summary of fixes provided
+- [ ] Resumable sessions identified
+</success_criteria>
