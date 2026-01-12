@@ -620,7 +620,97 @@ Agent-first query tools:
 * `tddprose_behaviors --json [--filter ...]` (BehaviorGraph export)
 * `tddprose_ready --json` (actionable gaps with satisfied dependencies)
 
-Implementation can be CLI-first with an MCP server wrapper where needed.
+### 14.10 MCP Server Integration (FastMCP pattern)
+
+> *Pattern from [FastMCP](https://github.com/jlowin/fastmcp): decorator-based dual CLI/MCP interface.*
+
+TDD Prose tools should work both as CLI commands and as MCP tools for AI assistants. FastMCP enables this with minimal wrapping:
+
+**Core pattern (shared implementation):**
+
+```python
+# tddprose/tools.py - Pure functions, no I/O dependencies
+def behaviors_query(filter: str = None, json_output: bool = True) -> dict:
+    """Query BehaviorGraph with optional filtering."""
+    graph = load_behavior_graph()
+    if filter:
+        graph = apply_filter(graph, filter)
+    return graph.to_dict() if json_output else graph.to_markdown()
+
+def ready_query() -> dict:
+    """Return behaviors ready for implementation (dependencies satisfied)."""
+    graph = load_behavior_graph()
+    return [b for b in graph.behaviors if b.is_ready()]
+```
+
+**MCP exposure (decorator layer):**
+
+```python
+# tddprose/mcp_server.py
+from fastmcp import FastMCP
+from .tools import behaviors_query, ready_query
+
+mcp = FastMCP("TDD Prose")
+
+@mcp.tool
+def tddprose_behaviors(filter: str = None) -> dict:
+    """Query the behavior ledger. Filters: orphaned, needs-review, weak-evidence."""
+    return behaviors_query(filter=filter, json_output=True)
+
+@mcp.tool
+def tddprose_ready() -> dict:
+    """List behaviors ready for implementation (no blocking dependencies)."""
+    return ready_query()
+
+@mcp.resource("behaviors://{behavior_id}")
+def get_behavior(behavior_id: str) -> dict:
+    """Fetch a specific behavior by ID."""
+    return load_behavior(behavior_id)
+```
+
+**CLI exposure (thin wrapper):**
+
+```python
+# tddprose/cli.py
+import click
+from .tools import behaviors_query, ready_query
+
+@click.command()
+@click.option('--filter', help='Filter: orphaned, needs-review, weak-evidence')
+@click.option('--json', is_flag=True)
+def behaviors(filter, json):
+    result = behaviors_query(filter=filter, json_output=json)
+    click.echo(format_output(result, json))
+```
+
+**Transport configuration:**
+
+- **STDIO** (default): For Claude Desktop integration via `claude_desktop_config.json`
+- **SSE/HTTP**: For web-based AI assistants or remote usage
+
+**Installation for Claude Desktop:**
+
+```json
+{
+  "mcpServers": {
+    "tdd-prose": {
+      "command": "uv",
+      "args": ["run", "fastmcp", "run", "tddprose/mcp_server.py"]
+    }
+  }
+}
+```
+
+**Error handling:**
+
+- Use `ToolError` for agent-facing errors (invalid filter, missing behavior)
+- Mask internal exceptions in production (`mask_error_details=True`)
+- Return structured error objects, not strings
+
+This dual pattern means:
+- Developers use `tddprose behaviors --json` from terminal
+- Claude Code uses the same logic via MCP tools
+- No code duplication between interfaces
 
 ### 14.9 Session Protocol (beads pattern)
 
