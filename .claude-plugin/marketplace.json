@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "agent-pipelines",
-      "description": "Run autonomous agent pipelines in Claude Code",
+      "description": "Turn the Ralph loop into a production system. Fresh agents, smart stopping, background execution—let Claude work overnight while you sleep.",
       "version": "1.0.0",
       "author": {
         "name": "Harrison Wells"

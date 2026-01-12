@@ -9,31 +9,34 @@ Describe what you want to build, and Claude handles the rest: planning, task bre
 - Multiple loops at once for parallel features.
 - Planning workflow: PRD → tasks → implementation loop.
 - Pipelines to chain loops together.
+- Crash recovery with automatic resume.
+- Session locking prevents duplicate runs.
+
+**Core philosophy:** Fresh agent per iteration prevents context degradation. Two-agent consensus prevents premature stopping. Planning tokens are cheaper than implementation tokens.
 
 ## Build Your Own Stages
 
-Agent Pipelines is also a framework for creating custom stage types. Each loop agent has:
+Agent Pipelines is also a framework for creating custom stage types. Each stage has:
 
 - A **prompt** that tells Claude what to do each iteration
-- A **completion strategy** that decides when to stop
+- A **termination strategy** that decides when to stop
 
-Built-in completion strategies:
+Built-in termination strategies:
 
 | Strategy | When it stops | Good for |
 |----------|---------------|----------|
-| `beads-empty` | All tasks done | Implementation loops |
-| `plateau` | Two agents agree quality plateaued | Refinement, bug hunting |
-| `fixed-n` | After N iterations | Brainstorming, batch processing |
-| `all-items` | After processing each item | Review loops |
+| `queue` | All tasks done (`bd ready` returns empty) | Implementation loops |
+| `judgment` | Two agents agree quality plateaued | Refinement, review, elegance |
+| `fixed` | After N iterations or agent requests stop | Brainstorming, documentation |
 
-**Example:** You want a bug-fix loop that keeps finding and fixing bugs until it stops finding new ones. Create a loop with `completion: plateau`. Run it with max 15 iterations. It might stop at 7 when two consecutive runs agree there's nothing left to fix.
+**Example:** You want a bug-fix loop that keeps finding and fixing bugs until it stops finding new ones. Create a stage with `termination: { type: judgment }`. Run it with max 15 iterations. It might stop at 7 when two consecutive runs agree there's nothing left to fix.
 
-Scaffold a new loop in seconds:
+Scaffold a new stage in seconds:
 ```bash
-/agent-pipelines:build-loop bugfix
+/agent-pipelines:build-stage bugfix
 ```
 
-This creates `scripts/stages/bugfix/` with a config and prompt template. Edit the prompt, pick your completion strategy, done.
+This creates `scripts/stages/bugfix/` with a config and prompt template. Edit the prompt, pick your termination strategy, done.
 
 ## Installation
 
@@ -110,20 +113,24 @@ The loop runs **independently** of your Claude Code session. You can:
 - Spin up multiple loops for parallel work
 - Recover if Claude Code crashes—loops keep running in tmux
 
-## Loop Types
+## Stage Types
 
-The plugin includes four stage types, each designed for a different phase of work:
+The system includes eight stage types, each designed for a different phase of work:
 
-| Loop | Purpose | Stops When |
-|------|---------|------------|
-| **work** | Implement tasks from beads | All beads are complete |
-| **improve-plan** | Iteratively refine planning docs | Two agents agree quality has plateaued |
-| **refine-beads** | Improve task definitions and dependencies | Two agents agree beads are implementable |
-| **idea-wizard** | Brainstorm improvements | Fixed iteration count |
+| Stage | Purpose | Termination | Default Iterations |
+|-------|---------|-------------|-------------------|
+| **work** | Implement tasks from beads | queue | User-specified |
+| **improve-plan** | Iteratively refine planning docs | judgment (2 consensus) | 5 |
+| **refine-beads** | Improve task definitions and dependencies | judgment (2 consensus) | 5 |
+| **elegance** | Deep exploration for simplicity | judgment (3 min, 2 consensus) | Until plateau |
+| **idea-wizard** | Brainstorm improvements | fixed | 1 |
+| **readme-sync** | Keep README aligned with code | fixed | 1 |
+| **robot-mode** | Design agent-optimized interfaces | fixed | 3 |
+| **research-plan** | Research-driven plan refinement | judgment (3 min, 2 consensus) | Until plateau |
 
-### Work Loop
+### Work Stage
 
-The primary loop for implementation. Each iteration:
+The primary stage for implementation. Each iteration:
 
 1. Reads progress file for accumulated context
 2. Lists available beads: `bd ready --label=pipeline/{session}`
@@ -133,7 +140,9 @@ The primary loop for implementation. Each iteration:
 6. Closes: `bd close {id}`
 7. Appends learnings to progress file
 
-### Refinement Loops
+Terminates when the beads queue is empty.
+
+### Refinement Stages
 
 Use `/refine` to polish plans and tasks before implementation:
 
@@ -145,7 +154,18 @@ Use `/refine` to polish plans and tasks before implementation:
 /refine beads    # Only improve the beads
 ```
 
-Each iteration reviews the work critically, makes improvements, and outputs a plateau assessment.
+Each iteration reviews the work critically, makes improvements, and writes a decision (continue/stop) to status.json. Stops when two consecutive agents agree quality has plateaued.
+
+### Elegance Stage
+
+Deep exploration for simplicity and elegance. Finds what can be simplified, removed, or recast for clarity:
+
+- Reads AGENTS.md and CLAUDE.md intensively
+- Maps system architecture before judging pieces
+- Launches subagents for deep dives into suspicious abstractions
+- Searches for functions that could merge, abstractions serving no purpose, machinery solving non-existent problems
+
+Uses ultrathinking for depth. Requires 3 minimum iterations before checking plateau, then 2 consecutive agents must agree to stop.
 
 ### Idea Wizard
 
@@ -154,20 +174,88 @@ Use `/ideate` to generate improvement ideas. The agent:
 1. Analyzes your codebase and existing plans
 2. Brainstorms 20-30 ideas across six dimensions (UX, performance, reliability, simplicity, features, DX)
 3. Evaluates each: Impact (1-5), Effort (1-5), Risk (1-5)
-4. Winnows to top 5 and saves to `docs/ideas.md`
+4. Winnows to top 5 and saves to `docs/ideas-{session}.md`
+
+Fixed iterations (default: 1). Multiple iterations push the agent to think differently.
+
+### README Sync Stage
+
+Keeps README aligned with actual codebase:
+
+1. Reads CLAUDE.md as authoritative source
+2. Explores codebase for implemented features
+3. Compares code vs README for each feature
+4. Identifies gaps: missing, outdated, under-explained, under-justified
+5. Edits README directly with clear descriptions, usage examples, and rationale
+
+Single iteration by default.
+
+### Robot Mode Stage
+
+Designs CLI interfaces optimized for coding agent ergonomics:
+
+- Identifies friction points that waste agent tokens
+- Finds human-oriented formatting (colors, spinners, ASCII art)
+- Documents missing machine-readable output options
+- Prioritizes improvements by impact-to-effort ratio
+
+Runs 3 iterations by default, each analyzing different areas.
+
+### Research Plan Stage
+
+Research-driven plan refinement using external sources:
+
+1. Chooses ONE research focus per iteration (external repos, local models, tools, architecture)
+2. Conducts focused research using WebFetch and WebSearch
+3. Documents findings in progress file
+4. Applies findings to plan with concrete changes
+
+Uses judgment termination (3 min, 2 consensus). Each iteration must return with specific, actionable findings.
 
 ## How Plateau Detection Works
 
-The `plateau` completion strategy requires **two consecutive agents to agree** before stopping. This prevents single-agent blind spots.
+The `judgment` termination strategy requires **N consecutive agents to agree** before stopping (default: 2). This prevents single-agent blind spots.
+
+### The Algorithm
+
+1. **Minimum iterations gate**: Must reach `min_iterations` (default: 2) before checking consensus
+2. **Current decision check**: Read the latest agent's status.json for `decision: stop`
+3. **Backward scan**: Count consecutive "stop" decisions from most recent backward
+4. **Consensus check**: If consecutive stops >= `consensus` (default: 2), terminate
 
 ```
-Agent 1: "PLATEAU: true - plan covers all requirements"
-Agent 2: "PLATEAU: false - missing error handling section"  ← counter resets
-Agent 3: "PLATEAU: true - added error handling, plan complete"
-Agent 4: "PLATEAU: true - confirmed, nothing to add"  ← loop stops
+Iteration 1: decision=continue
+Iteration 2: decision=continue
+Iteration 3: decision=stop      → 1 consecutive, need 2, continue
+Iteration 4: decision=stop      → 2 consecutive, consensus reached, STOP
 ```
 
-No single agent can prematurely stop a loop. Both must independently confirm the work is done.
+### Why This Matters
+
+```
+Agent 1: "decision: stop - plan covers all requirements"
+Agent 2: "decision: continue - missing error handling section"  ← counter resets
+Agent 3: "decision: stop - added error handling, plan complete"
+Agent 4: "decision: stop - confirmed, nothing to add"  ← loop stops
+```
+
+No single agent can prematurely stop a loop. Both must independently confirm the work is done. This prevents:
+- Single-agent blind spots
+- Premature stopping on subjective quality judgments
+- False confidence from one agent's limited analysis
+
+### Configuration
+
+Stages configure consensus requirements in `stage.yaml`:
+
+```yaml
+termination:
+  type: judgment
+  min_iterations: 2    # Don't check before this many iterations
+  consensus: 2         # Consecutive stops needed
+```
+
+The `elegance` and `research-plan` stages use `min_iterations: 3` to ensure thorough exploration before allowing early termination.
 
 ## Pipelines
 
