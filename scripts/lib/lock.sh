@@ -14,33 +14,47 @@ acquire_lock() {
   mkdir -p "$LOCKS_DIR"
   local lock_file="$LOCKS_DIR/${session}.lock"
 
-  # Check for existing lock
-  if [ -f "$lock_file" ]; then
+  # Handle --force flag: remove existing lock first
+  if [ "$force" = "--force" ] && [ -f "$lock_file" ]; then
     local existing_pid=$(jq -r '.pid // empty' "$lock_file" 2>/dev/null)
+    echo "Warning: Overriding existing lock for session '$session' (PID $existing_pid)" >&2
+    rm -f "$lock_file"
+  fi
 
-    if [ -n "$existing_pid" ] && kill -0 "$existing_pid" 2>/dev/null; then
-      # PID is alive
-      if [ "$force" = "--force" ]; then
-        echo "Warning: Overriding existing lock for session '$session' (PID $existing_pid)" >&2
-      else
+  # Atomic lock creation using noclobber
+  # This prevents TOCTOU race conditions
+  if ! (set -C; echo "$$" > "$lock_file") 2>/dev/null; then
+    # Lock file exists - check if it's stale
+    if [ -f "$lock_file" ]; then
+      local existing_pid=$(jq -r '.pid // empty' "$lock_file" 2>/dev/null)
+
+      if [ -n "$existing_pid" ] && kill -0 "$existing_pid" 2>/dev/null; then
+        # PID is alive - lock is active
         echo "Error: Session '$session' is already running (PID $existing_pid)" >&2
         echo "  Use --force to override" >&2
         return 1
+      else
+        # Stale lock - PID no longer running, remove and retry
+        echo "Cleaning up stale lock for session '$session'" >&2
+        rm -f "$lock_file"
+        if ! (set -C; echo "$$" > "$lock_file") 2>/dev/null; then
+          # Another process won the race
+          echo "Error: Failed to acquire lock for session '$session'" >&2
+          return 1
+        fi
       fi
-    else
-      # Stale lock - PID no longer running
-      echo "Cleaning up stale lock for session '$session'" >&2
-      rm -f "$lock_file"
     fi
   fi
 
-  # Create lock file
+  # Write full lock info atomically via temp file + mv
   local timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date +%Y-%m-%dT%H:%M:%S)
+  local tmp_file=$(mktemp)
   jq -n \
     --arg session "$session" \
     --arg pid "$$" \
     --arg started "$timestamp" \
-    '{session: $session, pid: ($pid | tonumber), started_at: $started}' > "$lock_file"
+    '{session: $session, pid: ($pid | tonumber), started_at: $started}' > "$tmp_file"
+  mv "$tmp_file" "$lock_file"
 
   return 0
 }
