@@ -246,18 +246,18 @@ validate_pipeline() {
     fi
     stage_names+=("$stage_name")
 
-    # P007: Each stage has loop or prompt
-    local stage_loop=$(echo "$stage" | jq -r ".loop // empty")
+    # P007: Each stage has stage or prompt
+    local stage_ref=$(echo "$stage" | jq -r ".stage // empty")
     local stage_prompt=$(echo "$stage" | jq -r ".prompt // empty")
-    if [ -z "$stage_loop" ] && [ -z "$stage_prompt" ]; then
-      errors+=("Stage '$stage_name': needs 'loop' or 'prompt' field")
+    if [ -z "$stage_ref" ] && [ -z "$stage_prompt" ]; then
+      errors+=("Stage '$stage_name': needs 'stage' or 'prompt' field")
     fi
 
-    # P008: Referenced loops exist
-    if [ -n "$stage_loop" ]; then
-      local loop_dir="${VALIDATE_SCRIPT_DIR}/../stages/$stage_loop"
-      if [ ! -d "$loop_dir" ]; then
-        errors+=("Stage '$stage_name': references unknown loop '$stage_loop'")
+    # P008: Referenced stages exist
+    if [ -n "$stage_ref" ]; then
+      local stage_dir="${VALIDATE_SCRIPT_DIR}/../stages/$stage_ref"
+      if [ ! -d "$stage_dir" ]; then
+        errors+=("Stage '$stage_name': references unknown stage '$stage_ref'")
       fi
     fi
 
