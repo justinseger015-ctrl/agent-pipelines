@@ -13,7 +13,7 @@ claude plugin install agent-pipelines@dodo-digital
 
 ## What It Does
 
-Agent Pipelines chains together stages—each with its own prompt and stopping condition—to build complex autonomous workflows. Stages iterate with fresh Claude instances, avoiding the context degradation that kills long-running agents.
+Agent Pipelines chains stages together to build complex autonomous workflows. Each stage has its own prompt and stopping condition. Stages iterate with fresh Claude instances, avoiding the context degradation that kills long-running agents.
 
 ```
 Plan (5 iterations)  →  Refine Tasks (5 iterations)  →  Implement (until done)
@@ -23,10 +23,10 @@ Plan (5 iterations)  →  Refine Tasks (5 iterations)  →  Implement (until don
 
 A single stage is a [Ralph loop](https://ghuntley.com/ralph/). Agent Pipelines extends Ralph with:
 
-- **Multi-stage chaining** — output from one stage feeds the next
-- **Three termination strategies** — fixed count, consensus judgment, or queue empty
-- **Crash recovery** — resume from the last completed iteration
-- **Session management** — run multiple pipelines in parallel via tmux
+- **Multi-stage chaining:** output from one stage feeds the next
+- **Three termination strategies:** fixed count, consensus judgment, or queue empty
+- **Crash recovery:** resume from the last completed iteration
+- **Session management:** run multiple pipelines in parallel via tmux
 
 ## Workflow
 
@@ -66,13 +66,13 @@ Each session runs in tmux. Start one, close your laptop, check back tomorrow.
 
 Long-running agents degrade. The longer the conversation, the worse the output. Context windows fill with debugging tangents and stale information.
 
-Agent Pipelines fixes this by resetting context each iteration. A progress file carries forward only what matters—patterns discovered, work completed, learnings captured. Iteration 50 is as sharp as iteration 1.
+Agent Pipelines fixes this by resetting context each iteration. A progress file carries forward only what matters: patterns discovered, work completed, learnings captured. Iteration 50 is as sharp as iteration 1.
 
 For subjective quality decisions, two-agent consensus prevents premature stopping. One agent might think the plan is done; the second catches what's missing.
 
 ---
 
-**Full reference:** [CLAUDE.md](CLAUDE.md) — architecture, configuration, template variables, testing framework
+**Full reference:** [CLAUDE.md](CLAUDE.md) for architecture, configuration, template variables, testing framework
 
 **Creating custom stages:** [scripts/pipelines/SCHEMA.md](scripts/pipelines/SCHEMA.md)
 
