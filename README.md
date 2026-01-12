@@ -259,93 +259,206 @@ The `elegance` and `research-plan` stages use `min_iterations: 3` to ensure thor
 
 ## Pipelines
 
-Chain multiple loops in sequence with pipelines:
+Chain multiple stages in sequence. Each stage's outputs become inputs for the next:
 
 ```yaml
 # pipelines/full-refine.yaml
 name: full-refine
-description: Complete planning refinement
+description: Complete planning refinement - plan first, then beads
 
-steps:
-  - loop: improve-plan
-    max: 5
+stages:
+  - name: improve-plan
+    stage: improve-plan
+    runs: 5
 
-  - loop: refine-beads
-    max: 5
+  - name: refine-beads
+    stage: refine-beads
+    runs: 5
+    inputs:
+      from: improve-plan
+      select: latest
 ```
 
 Available pipelines:
-- `quick-refine` - 3+3 iterations
-- `full-refine` - 5+5 iterations
-- `deep-refine` - 8+8 iterations
+- `quick-refine` - 3+3 iterations (fast validation)
+- `full-refine` - 5+5 iterations (standard)
+- `deep-refine` - 8+8 iterations (thorough)
+
+### Running Pipelines
+
+```bash
+# Run a multi-stage pipeline
+./scripts/run.sh pipeline full-refine.yaml my-session
+
+# Run a single-stage pipeline (3 equivalent ways)
+./scripts/run.sh work auth 25                    # Shortcut
+./scripts/run.sh loop work auth 25               # Explicit
+./scripts/run.sh pipeline --single-stage work auth 25  # Engine syntax
+```
+
+### Pipeline Schema
+
+Pipelines support inline prompts, perspectives for fan-out, and stage references:
+
+```yaml
+name: multi-review
+stages:
+  - name: review
+    runs: 4
+    perspectives:
+      - security
+      - performance
+      - maintainability
+      - testing
+    prompt: |
+      Review from ${PERSPECTIVE} perspective.
+      Write to ${OUTPUT}
+
+  - name: synthesize
+    runs: 1
+    prompt: |
+      Combine all reviews:
+      ${INPUTS.review}
+      Write synthesis to ${OUTPUT}
+```
+
+See `scripts/pipelines/SCHEMA.md` for the complete schema reference.
 
 ## Architecture
 
+**Everything is a pipeline.** The unified engine (`engine.sh`) runs all sessions the same way. A single-stage pipeline is what we colloquially call a "loop."
+
 ```
 scripts/
-├── stages/                    # Stage definitions
-│   ├── engine.sh              # Core loop runner
-│   ├── run.sh                 # Convenience wrapper
-│   ├── config.sh              # YAML configuration loader
-│   ├── lib/                   # State, progress, notifications
-│   ├── completions/           # Stopping strategies
-│   ├── work/                  # Loop type: implementation
-│   ├── improve-plan/          # Loop type: plan refinement
-│   ├── refine-beads/          # Loop type: bead refinement
-│   └── idea-wizard/           # Loop type: idea generation
-│
-└── pipelines/                 # Pipeline engine + definitions
-    ├── run.sh                 # Pipeline runner
-    ├── lib/                   # Parsing, resolution, providers
-    ├── SCHEMA.md              # Pipeline schema reference
-    ├── quick-refine.yaml      # 3+3 iterations
-    ├── full-refine.yaml       # 5+5 iterations
-    └── deep-refine.yaml       # 8+8 iterations
+├── engine.sh                 # Unified pipeline engine
+├── run.sh                    # Entry point (converts all commands to pipeline calls)
+├── lib/                      # Shared utilities
+│   ├── yaml.sh               # YAML→JSON conversion
+│   ├── state.sh              # JSON iteration history + crash recovery
+│   ├── progress.sh           # Accumulated context files
+│   ├── context.sh            # v3 context.json generation
+│   ├── status.sh             # v3 status.json validation
+│   ├── resolve.sh            # Template variable resolution
+│   ├── notify.sh             # Desktop notifications + logging
+│   ├── lock.sh               # Session locking (prevents duplicates)
+│   └── completions/          # Termination strategies
+│       ├── beads-empty.sh    # Stop when queue empty (type: queue)
+│       ├── plateau.sh        # Stop on consensus (type: judgment)
+│       └── fixed-n.sh        # Stop after N iterations (type: fixed)
+├── stages/                   # Stage definitions
+│   ├── work/                 # Implementation (queue termination)
+│   ├── improve-plan/         # Plan refinement (judgment termination)
+│   ├── refine-beads/         # Bead refinement (judgment termination)
+│   ├── elegance/             # Code elegance review (judgment termination)
+│   ├── idea-wizard/          # Ideation (fixed termination)
+│   ├── readme-sync/          # Documentation sync (fixed termination)
+│   ├── robot-mode/           # Agent-friendly CLI design (fixed termination)
+│   └── research-plan/        # Research-driven refinement (judgment termination)
+└── pipelines/                # Multi-stage pipeline configs
+    ├── SCHEMA.md             # Pipeline schema reference
+    ├── quick-refine.yaml     # 3+3 iterations
+    ├── full-refine.yaml      # 5+5 iterations
+    └── deep-refine.yaml      # 8+8 iterations
+
+skills/                       # Claude Code skill extensions
+commands/                     # Slash command documentation
 ```
 
-### Loop Configuration
+### Stage Configuration
 
 Each stage type is defined by a `stage.yaml`:
 
 ```yaml
 name: work
 description: Implement features from beads until done
-completion: beads-empty       # Stopping strategy
-check_before: true            # Check before iteration starts
+
+termination:
+  type: queue                 # queue, judgment, or fixed
+
 delay: 3                      # Seconds between iterations
 ```
 
-For plateau-based loops:
+For judgment-based stages:
 
 ```yaml
 name: improve-plan
-completion: plateau
-min_iterations: 2             # Don't check plateau before this
-output_parse: plateau:PLATEAU reasoning:REASONING
+description: Iteratively refine planning docs
+
+termination:
+  type: judgment
+  min_iterations: 2           # Don't check consensus before this
+  consensus: 2                # Consecutive stops needed
+
+delay: 2
 ```
+
+For fixed-iteration stages:
+
+```yaml
+name: idea-wizard
+description: Brainstorm improvements
+
+termination:
+  type: fixed                 # Runs exactly N times, or until agent writes decision: stop
+
+delay: 1
+```
+
+### v3 Status Format
+
+Agents write `status.json` at the end of each iteration:
+
+```json
+{
+  "decision": "continue",       // or "stop" or "error"
+  "reason": "Found more work",
+  "summary": "Implemented auth middleware",
+  "work": {
+    "items_completed": ["beads-abc123"],
+    "files_touched": ["src/auth.ts"]
+  },
+  "errors": []
+}
+```
+
+The engine reads this to determine:
+- Whether to continue (for judgment/fixed types)
+- What to record in state history
+- Whether an error occurred
 
 ## State Management
 
-The plugin creates files in your project (not the plugin directory):
+All sessions run in `.claude/pipeline-runs/{session}/` with unified state tracking:
 
 ```
 your-project/
 ├── docs/
-│   └── plans/                        # PRDs
+│   └── plans/                                    # PRDs
 │       └── 2025-01-09-auth-prd.md
 ├── .claude/
-│   ├── pipeline-progress/
-│   │   └── progress-auth.txt         # Accumulated context
-│   ├── pipeline-state-auth.json          # Iteration history
-│   └── pipeline-completions.json         # Completion log
-└── .beads/                           # Task database
+│   ├── locks/                                    # Session locks
+│   │   └── auth.lock
+│   └── pipeline-runs/
+│       └── auth/                                 # Session directory
+│           ├── state.json                        # Iteration history + crash recovery
+│           ├── progress-auth.md                  # Accumulated context
+│           └── stage-00-work/                    # Stage outputs
+│               ├── output.md                     # Stage output
+│               └── iterations/
+│                   ├── 001/
+│                   │   ├── context.json          # Iteration context
+│                   │   ├── status.json           # Agent decision
+│                   │   └── output.md             # Iteration output
+│                   └── 002/
+│                       └── ...
+└── .beads/                                       # Task database
 ```
 
 ### Progress Files
 
 Each iteration appends to the progress file:
 
-```
+```markdown
 # Progress: auth
 
 Verify: npm test && npm run build
@@ -362,34 +475,112 @@ Verify: npm test && npm run build
 ---
 ```
 
-Fresh agents read this file to maintain context without degradation.
+Fresh agents read this file to maintain context without degradation. This is the core of the Ralph loop pattern: each agent is fresh (no token accumulation), but reads accumulated learnings from previous iterations.
 
 ### State Files
 
-JSON files track iteration history for completion checks:
+JSON files track iteration history for completion checks and crash recovery:
 
 ```json
 {
   "session": "auth",
-  "loop_type": "work",
+  "type": "loop",
   "started_at": "2025-01-09T10:00:00Z",
   "status": "running",
   "iteration": 5,
+  "iteration_completed": 4,
+  "iteration_started": "2025-01-09T10:05:00Z",
   "history": [
-    {"iteration": 1, "timestamp": "...", "plateau": false},
-    {"iteration": 2, "timestamp": "...", "plateau": true}
+    {
+      "iteration": 1,
+      "timestamp": "2025-01-09T10:00:30Z",
+      "decision": "continue",
+      "summary": "Implemented user model"
+    },
+    {
+      "iteration": 2,
+      "timestamp": "2025-01-09T10:01:00Z",
+      "decision": "continue",
+      "summary": "Added login endpoint"
+    }
   ]
 }
 ```
 
-## Multi-Session Support
+Key fields:
+- `iteration_completed`: Last iteration that fully finished (safe resume point)
+- `iteration_started`: When current iteration began (crash detection)
+- `history`: Array of all iteration outcomes for plateau detection
 
-Run multiple loops simultaneously. Each has isolated beads, progress, state, and tmux session:
+## Session Management
+
+### Multi-Session Support
+
+Run multiple pipelines simultaneously. Each has isolated beads, progress, state, and tmux session:
 
 ```bash
 pipeline-auth      # beads tagged pipeline/auth
 pipeline-dashboard # beads tagged pipeline/dashboard
 ```
+
+### Session Locking
+
+Locks prevent running duplicate sessions with the same name. They are automatically released when a session ends normally or its process dies.
+
+```bash
+# List active locks
+ls .claude/locks/
+
+# View lock details (PID, start time)
+cat .claude/locks/{session}.lock | jq
+
+# Check if a session is locked
+test -f .claude/locks/{session}.lock && echo "locked" || echo "available"
+
+# Clear a stale lock manually (only if process is dead)
+rm .claude/locks/{session}.lock
+
+# Force start despite existing lock
+./scripts/run.sh work my-session 10 --force
+```
+
+**When you see "Session is already running":**
+1. Check if the PID in the lock file is still alive: `ps -p <pid>`
+2. If alive, the session is running - attach or kill it first
+3. If dead, the lock is stale - use `--resume` to continue or `--force` to restart
+
+### Crash Recovery
+
+Sessions automatically detect and recover from crashes (API timeouts, network issues, SIGKILL).
+
+**When a session crashes**, you'll see:
+```
+Session 'auth' failed at iteration 5/25
+Last successful iteration: 4
+Error: Claude process terminated unexpectedly
+Run with --resume to continue from iteration 5
+```
+
+**To resume:**
+```bash
+./scripts/run.sh work auth 25 --resume
+```
+
+**How crash detection works:**
+1. On startup, engine checks: lock exists + PID dead = crashed
+2. State file tracks `iteration_started` and `iteration_completed` for precise resume
+3. For hung sessions (PID alive but stuck), use `tmux attach` to diagnose
+
+**What gets preserved on crash:**
+- Iteration history (all completed iterations in `state.json`)
+- Progress file (accumulated learnings in markdown)
+- Completion checkpoint (`iteration_completed` marks the safe point)
+- Error context (what went wrong)
+
+**What gets reset on resume:**
+- Status returns to "running"
+- Error details cleared
+- Loop continues from `iteration_completed + 1`
 
 ## Notifications
 

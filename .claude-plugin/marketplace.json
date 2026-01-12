@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "agent-pipelines",
-      "description": "Turn the Ralph loop into a production system. Fresh agents, smart stopping, background execution—let Claude work overnight while you sleep.",
+      "description": "Run Claude in loops until work is done. Each iteration gets a fresh agent to avoid context degradation. Two agents must agree before stopping.",
       "version": "1.0.0",
       "author": {
         "name": "Harrison Wells"
