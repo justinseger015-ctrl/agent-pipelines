@@ -173,7 +173,11 @@ Built deterministically from TestIR + mapping snapshot.
 
 ### 7.3 Eligibility categories
 
-* `behavior` (stakeholder-facing)
+**MVP (Phases 0-2):** Binary classification
+* `behavior` (stakeholder-facing) — rendered in spec
+* `internal` (everything else) — visible in coverage reports only
+
+**Full taxonomy (Phase 3+):** Refine `internal` into subcategories for reporting:
 * `diagnostic` (implementation checks, internal invariants)
 * `snapshot` (golden/snapshot tests)
 * `perf` (benchmarks)
@@ -221,7 +225,9 @@ This enables:
 - Focused context windows (filter to actionable items only)
 - Deterministic queries without text interpretation
 
-### 7.5 Behavior Dependencies
+### 7.5 Behavior Dependencies (Phase 3+ / Agent Skill)
+
+> **Note:** This is an agent skill feature, not core compiler. The compiler reads tests; it cannot infer inter-behavior dependencies. Dependencies must be declared by agents or humans.
 
 Behaviors can relate to other behaviors:
 
@@ -240,6 +246,8 @@ Dependency types:
 - **evidenced_by**: Tests that prove this behavior (already captured in `evidence`)
 
 The `tddprose_ready` command uses dependency graph to show only behaviors whose prerequisites are satisfied—analogous to `bd ready` in beads.
+
+**Implementation timing:** Add in Phase 3 when agent skill needs to order work.
 
 ---
 
@@ -267,9 +275,11 @@ Priority order:
 3. deterministic heuristic from suite segments + normalized test name phrase
 4. if ambiguous: mint a new behavior_id but mark `needs_review`
 
-### 8.4 Content-hash fingerprints (beads pattern)
+### 8.4 Content-hash fingerprints (Phase 3+ / Agent Skill)
 
 > *Pattern from [beads](https://github.com/steveyegge/beads): content-addressable IDs enable parallel agent work without coordination.*
+
+> **Note:** This is an agent skill feature. The core compiler uses `behavior_id` for determinism. Content hashes add value when agents create behaviors in parallel—not needed for Phases 0-2.
 
 Each behavior maintains a `content_hash` computed from canonical content:
 
@@ -288,6 +298,8 @@ This enables:
 - **Merge safety**: Concurrent edits to different behaviors never conflict on IDs
 
 The `behavior_id` remains human-readable (`auth.login.invalid_credentials`), while `content_hash` provides the collision-resistant fingerprint for change tracking.
+
+**Implementation timing:** Add in Phase 3 when agent skill enables parallel behavior creation.
 
 ### 8.3 mapping snapshot (team determinism)
 
@@ -620,9 +632,11 @@ Agent-first query tools:
 * `tddprose_behaviors --json [--filter ...]` (BehaviorGraph export)
 * `tddprose_ready --json` (actionable gaps with satisfied dependencies)
 
-### 14.10 MCP Server Integration (FastMCP pattern)
+### 14.10 MCP Server Integration (Phase 3+ Enhancement)
 
 > *Pattern from [FastMCP](https://github.com/jlowin/fastmcp): decorator-based dual CLI/MCP interface.*
+
+> **Note:** MCP is a thin wrapper over CLI. Build CLI first; MCP can be added in one day once CLI exists. This is a Phase 3+ enhancement, not MVP.
 
 TDD Prose tools should work both as CLI commands and as MCP tools for AI assistants. FastMCP enables this with minimal wrapping:
 
@@ -712,9 +726,11 @@ This dual pattern means:
 - Claude Code uses the same logic via MCP tools
 - No code duplication between interfaces
 
-### 14.9 Session Protocol (beads pattern)
+### 14.9 Session Protocol (Optional Enhancement)
 
 > *Pattern from [beads](https://github.com/steveyegge/beads): structured session phases with checkpoints enable recovery and context management.*
+
+> **Note:** This is an optional enhancement for production agent skill. MVP can use simpler "re-run interview on failure" model. Session recovery matters when interviews are expensive; for most use cases, starting over is acceptable.
 
 Agent skill sessions follow explicit phases with checkpoints:
 
@@ -796,72 +812,72 @@ This enables:
 
 ## 17. Implementation phases and exit criteria
 
-### Phase 0 — Deterministic spine
+> **Simplification note:** Consolidated from 6 phases to 4. Original phases 0-2 merged into "Core Compiler," original phases 3-5 merged into "CI & Agent."
+
+### Phase 0 — Deterministic Spine
+
+**Goal:** Prove the core loop works end-to-end with one language.
 
 Deliver:
+* TestIR schema + pytest adapter (AST via py-tree-sitter + tree-sitter-python)
+* Deterministic renderer with owned regions
+* Stable ordering/wrapping rules
+* Local sqlite cache + locking
 
-* TestIR schema + one adapter skeleton
-* **Core dependencies:** py-tree-sitter + tree-sitter-python (or tree-sitter-typescript)
-* deterministic renderer with owned regions
-* stable ordering/wrapping rules
+Exit criteria:
+* Identical inputs → identical spec bytes
+* No-op run produces no diffs
+* Touches only impacted blocks
+* Safe in pre-commit hooks (no loops)
 
-Exit:
-* identical inputs → identical spec bytes
-* no-op run produces no diffs
+### Phase 1 — BehaviorGraph + Team Determinism
 
-### Phase 1 — First real framework adapter + incremental planner
-
-Deliver:
-
-* Jest/Vitest or pytest adapter (AST + optional runner)
-* incremental change detection
-* local sqlite cache + locking
-  Exit:
-* touches only impacted blocks
-* safe in hooks (no loops)
-
-### Phase 2 — BehaviorGraph + mapping snapshot
+**Goal:** Make output stable across team members and refactors.
 
 Deliver:
-
-* anchored behavior_id flow
+* Anchored behavior_id flow (`@tdd-prose:behavior` comments)
 * mapping.snapshot format + merge stability
-* eligibility categories + tiered output
-  Exit:
-* refactors do not churn IDs when anchors exist
-* team determinism holds via snapshot
+* Binary eligibility: `behavior` vs `internal`
+* Incremental change detection (git diff or hashes)
 
-### Phase 3 — Drift + coverage + CI overlay
+Exit criteria:
+* Refactors do not churn IDs when anchors exist
+* Team determinism holds via committed snapshot
+* New team member gets identical output from fresh clone
 
-Deliver:
+### Phase 2 — CI Integration + Coverage
 
-* `/tdd-check`, `/tdd-coverage`
-* `/tdd-report` overlay from test results
-* PR-ready behavior diff summaries
-  Exit:
-* CI gates on `needs_review` and mapping integrity
-* pass/fail visible without spec churn
-
-### Phase 4 — Agent skill: interview → tests
+**Goal:** Make TDD Prose useful in CI pipelines.
 
 Deliver:
+* `/tdd-check` — drift detection, mapping integrity, anchor collisions
+* `/tdd-coverage` — gap report, orphan tests, weak evidence
+* `/tdd-report` — overlay from test results (CTRF preferred)
+* PR annotations with behavior diff summaries
 
-* structured intent capture
-* gap-aware test planning
-* anchored test generation aligned to repo conventions
-* validation gates
-  Exit:
-* skill reliably produces tests that land cleanly in ledger
-* newly generated tests produce stable behavior entries on compile
+Exit criteria:
+* CI gates on `needs_review` count
+* Pass/fail visible in overlays without spec churn
+* PR reviewers see behavior-level change summaries
 
-### Phase 5 — Multi-framework expansion
+### Phase 3 — Agent Skill + Expansion
+
+**Goal:** Enable AI assistants to write tests that land cleanly in ledger.
 
 Deliver:
+* Structured intent capture (interview → behavior intent JSON)
+* Gap-aware test planning against BehaviorGraph
+* Anchored test generation aligned to repo conventions
+* Validation gates (lint, typecheck, test run)
+* Multi-framework expansion: Jest/Vitest, RSpec, Go test
+* `--json` output for all commands
+* Behavior dependencies + content-hash fingerprints
+* Optional: Session protocol, MCP server integration
 
-* pytest, RSpec, Go test adapters
-* better runner reconciliation
-  Exit:
-* consistent ledger behavior across languages/frameworks
+Exit criteria:
+* Agent skill reliably produces tests that land cleanly in ledger
+* Newly generated tests produce stable behavior entries on compile
+* Consistent ledger behavior across languages/frameworks
 
 ---
 
