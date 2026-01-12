@@ -386,7 +386,7 @@ run_pipeline() {
   local default_model=$(json_get "$pipeline_json" ".defaults.model" "sonnet")
 
   # Execute each stage
-  local stage_count=$(json_array_len "$pipeline_json" ".loops")
+  local stage_count=$(json_array_len "$pipeline_json" ".stages")
 
   for stage_idx in $(seq 0 $((stage_count - 1))); do
     local stage_name=$(json_get "$pipeline_json" ".stages[$stage_idx].name")
