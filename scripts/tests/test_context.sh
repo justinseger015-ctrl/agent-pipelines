@@ -87,16 +87,6 @@ test_context_inputs_empty_for_first_iteration() {
   rm -rf "$test_dir"
 }
 
-test_remaining_time_no_limit() {
-  local remaining=$(calculate_remaining_time "" '{}')
-  assert_eq "-1" "$remaining" "no limit returns -1"
-}
-
-test_remaining_time_with_limit() {
-  local remaining=$(calculate_remaining_time "" '{"max_runtime_seconds": 3600}')
-  assert_eq "3600" "$remaining" "returns max runtime when no start time"
-}
-
 #-------------------------------------------------------------------------------
 # Resolve Tests (v3 mode)
 #-------------------------------------------------------------------------------
@@ -110,7 +100,8 @@ test_resolve_v3_variables() {
   local context_file=$(generate_context "test-session" "1" "$stage_config" "$test_dir")
 
   local template='Session: ${SESSION}, Iteration: ${ITERATION}, CTX: ${CTX}'
-  local resolved=$(resolve_prompt_v3 "$template" "$context_file")
+  # resolve_prompt auto-detects context file and uses v3 mode
+  local resolved=$(resolve_prompt "$template" "$context_file")
 
   assert_contains "$resolved" "Session: test-session" "SESSION resolved"
   assert_contains "$resolved" "Iteration: 1" "ITERATION resolved"
@@ -156,8 +147,6 @@ run_test "Context JSON structure" test_context_json_structure
 run_test "Context paths populated" test_context_paths_populated
 run_test "Context iteration directories created" test_context_iteration_directories_created
 run_test "Context inputs empty for first iteration" test_context_inputs_empty_for_first_iteration
-run_test "Remaining time no limit" test_remaining_time_no_limit
-run_test "Remaining time with limit" test_remaining_time_with_limit
 run_test "Resolve v3 variables" test_resolve_v3_variables
 run_test "Resolve auto-detects context file" test_resolve_auto_detects_context_file
 run_test "Resolve legacy JSON still works" test_resolve_legacy_json_still_works

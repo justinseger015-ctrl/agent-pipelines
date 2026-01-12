@@ -18,67 +18,59 @@
 #   ${INPUTS.stage-name}          - Outputs from a previous stage
 #   ${INPUTS}                     - Shorthand for previous stage outputs
 
-# Resolve prompt using context file (v3 mode)
-# Usage: resolve_prompt_v3 "$template" "$context_file"
-resolve_prompt_v3() {
+# Resolve all variables in a prompt template
+# Usage: resolve_prompt "$template" "$vars"
+# $vars: context.json path (v3 mode) OR JSON object (legacy mode)
+resolve_prompt() {
   local template=$1
-  local context_file=$2
+  local vars=$2
 
   local resolved="$template"
 
-  # Read context
-  local ctx_json=$(cat "$context_file" 2>/dev/null || echo "{}")
+  # v3 mode: second arg is a context.json file path
+  if [ -f "$vars" ] && [[ "$vars" == *.json ]]; then
+    local context_file="$vars"
+    local ctx_json=$(cat "$context_file" 2>/dev/null || echo "{}")
 
-  # Resolve v3 convenience paths
-  local ctx_progress=$(echo "$ctx_json" | jq -r '.paths.progress // ""')
-  local ctx_output=$(echo "$ctx_json" | jq -r '.paths.output // ""')
-  local ctx_status=$(echo "$ctx_json" | jq -r '.paths.status // ""')
+    # Resolve v3 convenience paths
+    local ctx_progress=$(echo "$ctx_json" | jq -r '.paths.progress // ""')
+    local ctx_output=$(echo "$ctx_json" | jq -r '.paths.output // ""')
+    local ctx_status=$(echo "$ctx_json" | jq -r '.paths.status // ""')
 
-  resolved="${resolved//\$\{CTX\}/$context_file}"
-  resolved="${resolved//\$\{STATUS\}/$ctx_status}"
-  resolved="${resolved//\$\{PROGRESS\}/$ctx_progress}"
-  resolved="${resolved//\$\{OUTPUT\}/$ctx_output}"
+    resolved="${resolved//\$\{CTX\}/$context_file}"
+    resolved="${resolved//\$\{STATUS\}/$ctx_status}"
+    resolved="${resolved//\$\{PROGRESS\}/$ctx_progress}"
+    resolved="${resolved//\$\{OUTPUT\}/$ctx_output}"
 
-  # DEPRECATED: Keep old variables working during migration
-  local ctx_session=$(echo "$ctx_json" | jq -r '.session // ""')
-  local ctx_iteration=$(echo "$ctx_json" | jq -r '.iteration // ""')
-  resolved="${resolved//\$\{SESSION\}/$ctx_session}"
-  resolved="${resolved//\$\{SESSION_NAME\}/$ctx_session}"
-  resolved="${resolved//\$\{ITERATION\}/$ctx_iteration}"
-  resolved="${resolved//\$\{PROGRESS_FILE\}/$ctx_progress}"
+    # DEPRECATED: Keep old variables working during migration
+    local ctx_session=$(echo "$ctx_json" | jq -r '.session // ""')
+    local ctx_iteration=$(echo "$ctx_json" | jq -r '.iteration // ""')
+    resolved="${resolved//\$\{SESSION\}/$ctx_session}"
+    resolved="${resolved//\$\{SESSION_NAME\}/$ctx_session}"
+    resolved="${resolved//\$\{ITERATION\}/$ctx_iteration}"
+    resolved="${resolved//\$\{PROGRESS_FILE\}/$ctx_progress}"
 
-  # Handle ${INPUTS.stage-name} via context inputs
-  local run_dir=$(echo "$ctx_json" | jq -r '.paths.session_dir // ""')
-  while [[ "$resolved" =~ \$\{INPUTS\.([a-zA-Z0-9_-]+)\} ]]; do
-    local ref_stage_name="${BASH_REMATCH[1]}"
-    local inputs_content=$(resolve_stage_inputs "$run_dir" "$ref_stage_name")
-    resolved="${resolved//\$\{INPUTS.$ref_stage_name\}/$inputs_content}"
-  done
+    # Handle ${INPUTS.stage-name} via context inputs
+    local run_dir=$(echo "$ctx_json" | jq -r '.paths.session_dir // ""')
+    while [[ "$resolved" =~ \$\{INPUTS\.([a-zA-Z0-9_-]+)\} ]]; do
+      local ref_stage_name="${BASH_REMATCH[1]}"
+      local inputs_content=$(resolve_stage_inputs "$run_dir" "$ref_stage_name")
+      resolved="${resolved//\$\{INPUTS.$ref_stage_name\}/$inputs_content}"
+    done
 
-  # Handle ${INPUTS} (previous stage shorthand)
-  if [[ "$resolved" == *'${INPUTS}'* ]] && [ -n "$run_dir" ]; then
-    local stage_idx=$(echo "$ctx_json" | jq -r '.stage.index // 0')
-    local prev_inputs=$(resolve_previous_stage_inputs "$run_dir" "$stage_idx")
-    resolved="${resolved//\$\{INPUTS\}/$prev_inputs}"
-  fi
+    # Handle ${INPUTS} (previous stage shorthand)
+    if [[ "$resolved" == *'${INPUTS}'* ]] && [ -n "$run_dir" ]; then
+      local stage_idx=$(echo "$ctx_json" | jq -r '.stage.index // 0')
+      local prev_inputs=$(resolve_previous_stage_inputs "$run_dir" "$stage_idx")
+      resolved="${resolved//\$\{INPUTS\}/$prev_inputs}"
+    fi
 
-  echo "$resolved"
-}
-
-# Resolve all variables in a prompt template (v2 compatibility mode)
-# Usage: resolve_prompt "$template" "$vars_json"
-# vars_json: {"session": "x", "iteration": 1, "progress_file": "/path", ...}
-resolve_prompt() {
-  local template=$1
-  local vars_json=$2
-
-  # Check if second arg is a context file path (v3 mode)
-  if [ -f "$vars_json" ] && [[ "$vars_json" == *.json ]]; then
-    resolve_prompt_v3 "$template" "$vars_json"
+    echo "$resolved"
     return
   fi
 
-  local resolved="$template"
+  # Legacy mode: second arg is a JSON object with variables
+  local vars_json="$vars"
 
   # Extract variables from JSON
   local session=$(echo "$vars_json" | jq -r '.session // empty')

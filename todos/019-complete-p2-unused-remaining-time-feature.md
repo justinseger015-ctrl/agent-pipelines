@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: "019"
 tags: [code-review, simplification, dead-code, yagni]
@@ -91,6 +91,7 @@ Delete `calculate_remaining_time()` and hardcode `remaining_seconds: -1` in cont
 | Date | Action | Learnings |
 |------|--------|-----------|
 | 2026-01-11 | Identified during code simplicity review | Speculative features should wait for requirements |
+| 2026-01-12 | Deleted calculate_remaining_time(), hardcoded remaining_seconds=-1 | 47 lines removed, re-add when needed |
 
 ## Resources
 

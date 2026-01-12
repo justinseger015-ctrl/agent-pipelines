@@ -36,13 +36,9 @@ generate_context() {
   # Build inputs JSON (from previous stage and previous iterations)
   local inputs_json=$(build_inputs_json "$run_dir" "$stage_config" "$iteration")
 
-  # Get limits from stage config and state
+  # Get limits from stage config
   local max_iterations=$(echo "$stage_config" | jq -r '.max_iterations // 50')
-  local started_at=""
-  if [ -f "$run_dir/state.json" ]; then
-    started_at=$(jq -r '.started_at // ""' "$run_dir/state.json" 2>/dev/null)
-  fi
-  local remaining_seconds=$(calculate_remaining_time "$started_at" "$stage_config")
+  local remaining_seconds=-1  # Runtime guardrails not implemented
 
   # Read pipeline name from state if available
   local pipeline=""
@@ -158,53 +154,4 @@ build_inputs_json() {
     --argjson from_stage "$from_stage" \
     --argjson from_iterations "$from_iterations" \
     '{from_stage: $from_stage, from_previous_iterations: $from_iterations}'
-}
-
-# Calculate remaining runtime in seconds
-# Usage: calculate_remaining_time "$started_at" "$stage_config"
-# Returns: remaining seconds (or -1 if no limit)
-calculate_remaining_time() {
-  local started_at=$1
-  local stage_config=$2
-
-  # Get max runtime from config
-  local max_runtime=$(echo "$stage_config" | jq -r '.guardrails.max_runtime_seconds // .max_runtime_seconds // ""')
-
-  if [ -z "$max_runtime" ] || [ "$max_runtime" = "null" ]; then
-    echo "-1"
-    return
-  fi
-
-  if [ -z "$started_at" ] || [ "$started_at" = "null" ]; then
-    echo "$max_runtime"
-    return
-  fi
-
-  # Calculate elapsed time
-  local now=$(date +%s)
-  local start_epoch
-
-  # Parse ISO 8601 timestamp to epoch
-  if command -v gdate &>/dev/null; then
-    start_epoch=$(gdate -d "$started_at" +%s 2>/dev/null || echo "0")
-  else
-    # macOS date or fallback
-    start_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$started_at" +%s 2>/dev/null || \
-                  date -j -f "%Y-%m-%dT%H:%M:%S" "$started_at" +%s 2>/dev/null || \
-                  echo "0")
-  fi
-
-  if [ "$start_epoch" -eq 0 ]; then
-    echo "$max_runtime"
-    return
-  fi
-
-  local elapsed=$((now - start_epoch))
-  local remaining=$((max_runtime - elapsed))
-
-  if [ "$remaining" -lt 0 ]; then
-    echo "0"
-  else
-    echo "$remaining"
-  fi
 }
