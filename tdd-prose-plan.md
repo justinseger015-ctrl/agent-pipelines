@@ -171,6 +171,12 @@ Built deterministically from TestIR + mapping snapshot.
 }
 ```
 
+Notes:
+
+* `weight` in evidence: Strength of this test as evidence for the behavior. Default 1.0. Reduced for tests that evidence multiple behaviors (shared evidence) or parameterized tests where each case partially covers the behavior. Computed deterministically from test structure.
+* `confidence`: How certain the compiler is about this behavior's identity/grouping. 1.0 = anchored explicitly; 0.8-0.99 = inferred from heuristics with high match; <0.8 = ambiguous, likely marked `needs_review`. Only used for diagnostics; does not affect rendering.
+* `fingerprint`: Hash of the behavior's canonical content (title + evidence signatures). Used for incremental change detection.
+
 ### 7.3 Eligibility categories
 
 **MVP (Phases 0-2):** Binary classification
@@ -194,15 +200,15 @@ The BehaviorGraph is the primary agent interface. All queries support `--json` o
 
 ```bash
 # Full graph export
-tddprose_behaviors --json
+tddprose behaviors --json
 
 # Filtered views for focused context
-tddprose_behaviors --json --filter orphaned
-tddprose_behaviors --json --filter needs-review
-tddprose_behaviors --json --filter weak-evidence
+tddprose behaviors --json --filter orphaned
+tddprose behaviors --json --filter needs-review
+tddprose behaviors --json --filter weak-evidence
 
 # Ready-to-implement behaviors (actionable gaps)
-tddprose_ready --json
+tddprose ready --json
 ```
 
 Output format:
@@ -245,7 +251,7 @@ Dependency types:
 - **related_to**: Cross-references without ordering
 - **evidenced_by**: Tests that prove this behavior (already captured in `evidence`)
 
-The `tddprose_ready` command uses dependency graph to show only behaviors whose prerequisites are satisfied—analogous to `bd ready` in beads.
+The `tddprose ready` command uses dependency graph to show only behaviors whose prerequisites are satisfied—analogous to `bd ready` in beads.
 
 **Implementation timing:** Add in Phase 3 when agent skill needs to order work.
 
@@ -275,6 +281,18 @@ Priority order:
 3. deterministic heuristic from suite segments + normalized test name phrase
 4. if ambiguous: mint a new behavior_id but mark `needs_review`
 
+### 8.3 mapping snapshot (team determinism)
+
+A small committed JSON file that stores:
+
+* behavior definitions (IDs + canonical titles)
+* evidence bindings (behavior_id ↔ test_id set)
+* approved aliases (old test_id → new test_id)
+* approved block assignments
+* provenance flags: `human_approved` vs `auto_accepted`
+
+This converts probabilistic continuity decisions into deterministic future builds.
+
 ### 8.4 Content-hash fingerprints (Phase 3+ / Agent Skill)
 
 > *Pattern from [beads](https://github.com/steveyegge/beads): content-addressable IDs enable parallel agent work without coordination.*
@@ -300,18 +318,6 @@ This enables:
 The `behavior_id` remains human-readable (`auth.login.invalid_credentials`), while `content_hash` provides the collision-resistant fingerprint for change tracking.
 
 **Implementation timing:** Add in Phase 3 when agent skill enables parallel behavior creation.
-
-### 8.3 mapping snapshot (team determinism)
-
-A small committed JSON file that stores:
-
-* behavior definitions (IDs + canonical titles)
-* evidence bindings (behavior_id ↔ test_id set)
-* approved aliases (old test_id → new test_id)
-* approved block assignments
-* provenance flags: `human_approved` vs `auto_accepted`
-
-This converts probabilistic continuity decisions into deterministic future builds.
 
 ---
 
@@ -386,13 +392,17 @@ No timestamps in spec. Any “last sync” belongs in local state and CI artifac
 
 ### 10.3 Eligibility classification
 
+> **MVP (Phases 0-2):** Use binary classification only (`behavior` vs `internal`). The detailed rules below apply to Phase 3+ when refining `internal` into subcategories.
+
 Deterministic rules first:
 
-* snapshot test detection (snapshot matchers, files, naming)
-* perf/fuzz conventions
-* high-mock / interaction-only signatures → diagnostic default
+* snapshot test detection (snapshot matchers, files, naming) → `snapshot`
+* perf/fuzz conventions (benchmark decorators, property-based test markers) → `perf`/`fuzz`
+* high-mock / interaction-only signatures → `diagnostic`
+* test harness setup/teardown → `infra`
+* everything else without explicit anchor → `internal` (MVP) or classifier-suggested category (Phase 3+)
 
-Optional classifier can refine borderline cases, but cannot override anchored category.
+Optional local model classifier can refine borderline cases, but cannot override anchored category.
 
 ### 10.4 Deterministic rendering
 
@@ -612,27 +622,27 @@ This preserves the one-direction truth model.
 
 Expose as commands/tools usable by Claude Code and Codex:
 
-Compiler tools:
+Compiler commands:
 
-* `tddprose_sync --diff|--apply`
-* `tddprose_check`
-* `tddprose_coverage`
-* `tddprose_report --from <junit.xml|json>`
+* `tddprose sync --diff|--apply`
+* `tddprose check`
+* `tddprose coverage`
+* `tddprose report --from <junit.xml|json>`
 
-Authoring tools:
+Authoring commands:
 
-* `tddprose_interview` (guided intake)
-* `tddprose_intent_validate` (schema + conflict checks)
-* `tddprose_plan_tests` (gap-aware plan)
-* `tddprose_write_tests --apply` (writes anchored tests)
-* `tddprose_validate_tests` (runs gates)
+* `tddprose interview` (guided intake)
+* `tddprose intent validate` (schema + conflict checks)
+* `tddprose plan` (gap-aware test plan)
+* `tddprose write --apply` (writes anchored tests)
+* `tddprose validate` (runs gates)
 
-Agent-first query tools:
+Agent-first query commands:
 
-* `tddprose_behaviors --json [--filter ...]` (BehaviorGraph export)
-* `tddprose_ready --json` (actionable gaps with satisfied dependencies)
+* `tddprose behaviors --json [--filter ...]` (BehaviorGraph export)
+* `tddprose ready --json` (actionable gaps with satisfied dependencies)
 
-### 14.10 MCP Server Integration (Phase 3+ Enhancement)
+### 14.9 MCP Server Integration (Phase 3+ Enhancement)
 
 > *Pattern from [FastMCP](https://github.com/jlowin/fastmcp): decorator-based dual CLI/MCP interface.*
 
@@ -726,7 +736,7 @@ This dual pattern means:
 - Claude Code uses the same logic via MCP tools
 - No code duplication between interfaces
 
-### 14.9 Session Protocol (Optional Enhancement)
+### 14.10 Session Protocol (Optional Enhancement)
 
 > *Pattern from [beads](https://github.com/steveyegge/beads): structured session phases with checkpoints enable recovery and context management.*
 
@@ -769,13 +779,13 @@ Agent skill sessions follow explicit phases with checkpoints:
 
 ```bash
 # Start new session
-tddprose_session start
+tddprose session start
 
 # Resume crashed/interrupted session
-tddprose_session resume
+tddprose session resume
 
 # Abort and clean up
-tddprose_session abort
+tddprose session abort
 ```
 
 This enables:
