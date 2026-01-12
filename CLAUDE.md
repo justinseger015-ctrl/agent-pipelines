@@ -101,6 +101,8 @@ scripts/
 │   ├── improve-plan/         # Plan refinement (judgment termination)
 │   ├── refine-beads/         # Bead refinement (judgment termination)
 │   ├── elegance/             # Code elegance review (judgment termination)
+│   ├── bug-discovery/        # Fresh-eyes bug exploration (fixed termination)
+│   ├── find-elegant-solutions/  # Bug triage and elegant fix design (judgment termination)
 │   ├── idea-wizard/          # Ideation (fixed termination)
 │   ├── research-plan/        # Research-driven planning (judgment termination)
 │   ├── readme-sync/          # Documentation sync (fixed termination)
@@ -109,7 +111,9 @@ scripts/
     ├── quick-refine.yaml     # 3+3 iterations
     ├── full-refine.yaml      # 5+5 iterations
     ├── deep-refine.yaml      # 8+8 iterations
+    ├── bug-hunt.yaml         # Discover → triage → refine → fix
     └── templates/            # Example pipeline templates
+        ├── bug-hunt.yaml     # Documented bug hunting workflow
         ├── code-review.yaml
         ├── ideate.yaml
         └── research-implement.yaml
@@ -268,13 +272,22 @@ output_path: docs/output-${SESSION}.md  # direct output to specific file
 4. Ensure prompt instructs agent to write `status.json` with decision
 5. Run verification: `./scripts/run.sh lint loop {name}`
 
-## Recommended Workflow
+## Recommended Workflows
 
 **Feature implementation flow:**
 1. `/sessions plan` or `/agent-pipelines:create-prd` → Gather requirements, save to `docs/plans/`
 2. `/agent-pipelines:create-tasks` → Break PRD into beads tagged `pipeline/{session}`
 3. `/refine` → Run refinement pipeline (default: 5+5 iterations)
 4. `/ralph` → Run work pipeline until all beads complete
+
+**Bug hunting flow:**
+```bash
+./scripts/run.sh pipeline bug-hunt.yaml my-session
+```
+1. **Discover** (8 iterations): Agents randomly explore code, trace execution flows, find bugs with fresh eyes
+2. **Elegance** (up to 5): Triage bugs, find patterns, design elegant solutions, create beads
+3. **Refine** (3 iterations): Polish the beads
+4. **Fix** (25 iterations): Implement the fixes
 
 ## Key Patterns
 
