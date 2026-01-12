@@ -99,104 +99,23 @@ Each iteration: fresh Claude reads progress file → picks task → implements �
 
 Loops run independently. Attach to watch (`/sessions attach`), run multiple in parallel, close your terminal—they keep going.
 
-## Stage Types
+## Built-in Stages
 
-The system includes eight stage types, each designed for a different phase of work:
+**work** — Grinds through your task queue. Each iteration picks a task, implements it, commits, closes it. Stops when queue is empty. This is the main implementation loop.
 
-| Stage | Purpose | Termination | Default Iterations |
-|-------|---------|-------------|-------------------|
-| **work** | Implement tasks from beads | queue | User-specified |
-| **improve-plan** | Iteratively refine planning docs | judgment (2 consensus) | 5 |
-| **refine-beads** | Improve task definitions and dependencies | judgment (2 consensus) | 5 |
-| **elegance** | Deep exploration for simplicity | judgment (3 min, 2 consensus) | Until plateau |
-| **idea-wizard** | Brainstorm improvements | fixed | 1 |
-| **readme-sync** | Keep README aligned with code | fixed | 1 |
-| **robot-mode** | Design agent-optimized interfaces | fixed | 3 |
-| **research-plan** | Research-driven plan refinement | judgment (3 min, 2 consensus) | Until plateau |
+**improve-plan** — Reviews your PRD and makes it better. Runs until two agents in a row say "this is good enough." Use before breaking a plan into tasks.
 
-### Work Stage
+**refine-beads** — Same idea, but for tasks. Splits tasks that are too big, merges ones that are too small, fixes dependencies. Run after `improve-plan`.
 
-The primary stage for implementation. Each iteration:
+**elegance** — Hunts for unnecessary complexity. Looks for abstractions that don't earn their keep, functions that should merge, machinery solving non-problems. Run when your codebase feels bloated.
 
-1. Reads progress file for accumulated context
-2. Lists available beads: `bd ready --label=pipeline/{session}`
-3. Picks the next logical task (considering dependencies)
-4. Claims it: `bd update {id} --status=in_progress`
-5. Implements, tests, commits
-6. Closes: `bd close {id}`
-7. Appends learnings to progress file
+**idea-wizard** — Brainstorms 20-30 ideas, scores them by impact/effort/risk, picks top 5. Run when you're stuck or want fresh perspective.
 
-Terminates when the beads queue is empty.
+**readme-sync** — Compares your codebase to the README and fills gaps. Run after long dev workflows to keep docs current.
 
-### Refinement Stages
+**robot-mode** — Audits your CLI for agent-friendliness. Finds human-oriented output (colors, spinners) that wastes tokens. Run if you're building tools agents will use.
 
-Use `/refine` to polish plans and tasks before implementation:
-
-```bash
-/refine quick    # 3+3 iterations (fast validation)
-/refine full     # 5+5 iterations (standard, default)
-/refine deep     # 8+8 iterations (thorough)
-/refine plan     # Only improve the plan
-/refine beads    # Only improve the beads
-```
-
-Each iteration reviews the work critically, makes improvements, and writes a decision (continue/stop) to status.json. Stops when two consecutive agents agree quality has plateaued.
-
-### Elegance Stage
-
-Deep exploration for simplicity and elegance. Finds what can be simplified, removed, or recast for clarity:
-
-- Reads AGENTS.md and CLAUDE.md intensively
-- Maps system architecture before judging pieces
-- Launches subagents for deep dives into suspicious abstractions
-- Searches for functions that could merge, abstractions serving no purpose, machinery solving non-existent problems
-
-Uses ultrathinking for depth. Requires 3 minimum iterations before checking plateau, then 2 consecutive agents must agree to stop.
-
-### Idea Wizard
-
-Use `/ideate` to generate improvement ideas. The agent:
-
-1. Analyzes your codebase and existing plans
-2. Brainstorms 20-30 ideas across six dimensions (UX, performance, reliability, simplicity, features, DX)
-3. Evaluates each: Impact (1-5), Effort (1-5), Risk (1-5)
-4. Winnows to top 5 and saves to `docs/ideas-{session}.md`
-
-Fixed iterations (default: 1). Multiple iterations push the agent to think differently.
-
-### README Sync Stage
-
-Keeps README aligned with actual codebase:
-
-1. Reads CLAUDE.md as authoritative source
-2. Explores codebase for implemented features
-3. Compares code vs README for each feature
-4. Identifies gaps: missing, outdated, under-explained, under-justified
-5. Edits README directly with clear descriptions, usage examples, and rationale
-
-Single iteration by default.
-
-### Robot Mode Stage
-
-Designs CLI interfaces optimized for coding agent ergonomics:
-
-- Identifies friction points that waste agent tokens
-- Finds human-oriented formatting (colors, spinners, ASCII art)
-- Documents missing machine-readable output options
-- Prioritizes improvements by impact-to-effort ratio
-
-Runs 3 iterations by default, each analyzing different areas.
-
-### Research Plan Stage
-
-Research-driven plan refinement using external sources:
-
-1. Chooses ONE research focus per iteration (external repos, local models, tools, architecture)
-2. Conducts focused research using WebFetch and WebSearch
-3. Documents findings in progress file
-4. Applies findings to plan with concrete changes
-
-Uses judgment termination (3 min, 2 consensus). Each iteration must return with specific, actionable findings.
+**research-plan** — Hits the web to improve your plan. Each iteration picks one research focus, finds concrete answers, applies them. Run when your plan needs external validation.
 
 ## How Plateau Detection Works
 
