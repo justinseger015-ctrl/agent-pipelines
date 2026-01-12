@@ -1,7 +1,7 @@
 # Bead Refinement Iteration
 
-Session: ${SESSION_NAME}
-Progress file: ${PROGRESS_FILE}
+Read context from: ${CTX}
+Progress file: ${PROGRESS}
 Iteration: ${ITERATION}
 
 ## Your Task
@@ -12,7 +12,7 @@ You are a meticulous planning reviewer. Examine each bead and improve its qualit
 
 Read progress file and architecture docs:
 ```bash
-cat ${PROGRESS_FILE}
+cat ${PROGRESS}
 cat AGENTS.md 2>/dev/null || echo "No AGENTS.md"
 ```
 
@@ -77,9 +77,3 @@ After completing your work, write your status to `${STATUS}`:
 
 Be honest. The goal is beads that an agent can pick up and implement confidently.
 Not perfect documentation—*implementable tasks*.
-
-Also output for legacy compatibility:
-```
-PLATEAU: true/false
-REASONING: [Same as your decision reason]
-```

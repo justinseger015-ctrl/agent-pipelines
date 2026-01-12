@@ -79,18 +79,37 @@ load_stage() {
 
   # Extract config values
   LOOP_NAME=$(json_get "$LOOP_CONFIG" ".name" "$stage_type")
-  LOOP_COMPLETION=$(json_get "$LOOP_CONFIG" ".completion" "fixed-n")
+
+  # v3 schema: read termination block first, fallback to v2 completion field
+  local term_type=$(json_get "$LOOP_CONFIG" ".termination.type" "")
+  if [ -n "$term_type" ]; then
+    # v3: map termination type to completion strategy
+    case "$term_type" in
+      queue) LOOP_COMPLETION="beads-empty" ;;
+      judgment) LOOP_COMPLETION="plateau" ;;
+      fixed) LOOP_COMPLETION="fixed-n" ;;
+      *) LOOP_COMPLETION="$term_type" ;;
+    esac
+    LOOP_MIN_ITERATIONS=$(json_get "$LOOP_CONFIG" ".termination.min_iterations" "1")
+    LOOP_CONSENSUS=$(json_get "$LOOP_CONFIG" ".termination.consensus" "2")
+  else
+    # v2 legacy: use completion field directly
+    LOOP_COMPLETION=$(json_get "$LOOP_CONFIG" ".completion" "fixed-n")
+    LOOP_MIN_ITERATIONS=$(json_get "$LOOP_CONFIG" ".min_iterations" "1")
+    LOOP_CONSENSUS="2"
+  fi
+
   LOOP_MODEL=$(json_get "$LOOP_CONFIG" ".model" "opus")
   LOOP_DELAY=$(json_get "$LOOP_CONFIG" ".delay" "3")
   LOOP_CHECK_BEFORE=$(json_get "$LOOP_CONFIG" ".check_before" "false")
   LOOP_OUTPUT_PARSE=$(json_get "$LOOP_CONFIG" ".output_parse" "")
-  LOOP_MIN_ITERATIONS=$(json_get "$LOOP_CONFIG" ".min_iterations" "1")
   LOOP_ITEMS=$(json_get "$LOOP_CONFIG" ".items" "")
   LOOP_PROMPT_NAME=$(json_get "$LOOP_CONFIG" ".prompt" "prompt")
   LOOP_OUTPUT_PATH=$(json_get "$LOOP_CONFIG" ".output_path" "")
 
   # Export for completion strategies
   export MIN_ITERATIONS="$LOOP_MIN_ITERATIONS"
+  export CONSENSUS="$LOOP_CONSENSUS"
   export ITEMS="$LOOP_ITEMS"
 
   # Load prompt

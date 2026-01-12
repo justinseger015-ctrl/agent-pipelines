@@ -52,11 +52,52 @@ test_refine_beads_stage_v3_schema() {
 # Prompt Variable Tests (v3 variables)
 #-------------------------------------------------------------------------------
 
+# Helper: get actual prompt file path from loop.yaml
+# Handles both default prompt.md and custom prompt paths
+get_prompt_path() {
+  local loop_dir=$1
+  local config_file="$loop_dir/loop.yaml"
+
+  if [ ! -f "$config_file" ]; then
+    echo ""
+    return
+  fi
+
+  local config=$(yaml_to_json "$config_file")
+  local prompt_field=$(echo "$config" | jq -r '.prompt // empty')
+
+  if [ -n "$prompt_field" ]; then
+    # Custom prompt path specified - check if it's a path or just a name
+    if [[ "$prompt_field" == *"/"* ]]; then
+      # It's a relative path like "prompts/bead-refiner.md"
+      echo "$loop_dir/$prompt_field"
+    elif [[ "$prompt_field" == *.md ]]; then
+      # It's a filename with extension
+      echo "$loop_dir/$prompt_field"
+    else
+      # It's just a name, check prompts/ directory first
+      if [ -f "$loop_dir/prompts/${prompt_field}.md" ]; then
+        echo "$loop_dir/prompts/${prompt_field}.md"
+      else
+        echo "$loop_dir/${prompt_field}.md"
+      fi
+    fi
+  else
+    # Default: prompt.md in loop directory
+    echo "$loop_dir/prompt.md"
+  fi
+}
+
 test_prompts_use_ctx_variable() {
   for loop_dir in "$LOOPS_DIR"/*/; do
-    local prompt_file="$loop_dir/prompt.md"
-    [ -f "$prompt_file" ] || continue
     local loop_name=$(basename "$loop_dir")
+    local prompt_file=$(get_prompt_path "$loop_dir")
+
+    if [ -z "$prompt_file" ] || [ ! -f "$prompt_file" ]; then
+      echo "  Warning: No prompt file found for $loop_name"
+      continue
+    fi
+
     local content=$(cat "$prompt_file")
     assert_contains "$content" '${CTX}' "$loop_name prompt uses \${CTX}"
   done
@@ -64,9 +105,14 @@ test_prompts_use_ctx_variable() {
 
 test_prompts_use_status_variable() {
   for loop_dir in "$LOOPS_DIR"/*/; do
-    local prompt_file="$loop_dir/prompt.md"
-    [ -f "$prompt_file" ] || continue
     local loop_name=$(basename "$loop_dir")
+    local prompt_file=$(get_prompt_path "$loop_dir")
+
+    if [ -z "$prompt_file" ] || [ ! -f "$prompt_file" ]; then
+      echo "  Warning: No prompt file found for $loop_name"
+      continue
+    fi
+
     local content=$(cat "$prompt_file")
     assert_contains "$content" '${STATUS}' "$loop_name prompt uses \${STATUS}"
   done
