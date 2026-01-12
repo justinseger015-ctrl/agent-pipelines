@@ -61,12 +61,16 @@ acquire_lock() {
 
 # Release a lock for a session
 # Usage: release_lock "$session"
+# Only releases if current process owns the lock (prevents accidental release of other process's lock)
 release_lock() {
   local session=$1
   local lock_file="$LOCKS_DIR/${session}.lock"
 
   if [ -f "$lock_file" ]; then
-    rm -f "$lock_file"
+    local lock_pid=$(jq -r '.pid // empty' "$lock_file" 2>/dev/null)
+    if [ "$lock_pid" = "$$" ]; then
+      rm -f "$lock_file"
+    fi
   fi
 }
 
