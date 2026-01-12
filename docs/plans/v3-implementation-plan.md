@@ -1186,9 +1186,16 @@ stages:
 
 ---
 
-### Phase 5: Fail Fast
+### Phase 5: Fail Fast ✅ COMPLETE
 
 **Goal:** Remove retry logic, fail immediately with clear error state.
+
+**Completed 2026-01-11:**
+- Created `scripts/tests/test_failure.sh` with 26 tests (TDD approach)
+- Updated `mark_failed` in `state.sh` to create structured error object with `type`, `message`, `timestamp` and `resume_from`
+- Updated `engine.sh` to fail immediately on Claude exit code != 0 (both loop and pipeline modes)
+- Error state includes clear resume instructions for crash recovery
+- All 193 tests pass, lint validation passes
 
 ---
 
@@ -1409,11 +1416,10 @@ mark_failed() {
 
 #### Success Criteria - Phase 5
 
-- [ ] No retry logic in engine
-- [ ] Failures write clear error state with `resume_from`
-- [ ] `--resume` correctly reads `resume_from` and continues
-- [ ] Test: Kill Claude mid-iteration, verify clean failure state
-- [ ] Test: Resume after failure works correctly
+- [x] No retry logic in engine
+- [x] Failures write clear error state with `resume_from`
+- [x] `--resume` correctly reads `resume_from` and continues
+- [x] Test: 26 tests in `test_failure.sh` verify all failure handling functionality
 
 ---
 

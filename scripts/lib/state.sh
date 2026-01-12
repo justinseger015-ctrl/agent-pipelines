@@ -117,18 +117,31 @@ mark_iteration_completed() {
      "$state_file" > "$state_file.tmp" && mv "$state_file.tmp" "$state_file"
 }
 
-# Mark session as failed
-# Usage: mark_failed "$state_file" "$error"
+# Mark session as failed with detailed error (v3)
+# Usage: mark_failed "$state_file" "$error_message" [error_type]
+# Creates structured error object with type, message, timestamp
+# Also sets resume_from for crash recovery
 mark_failed() {
   local state_file=$1
-  local error=$2
+  local error_message=$2
+  local error_type=${3:-"unknown"}
 
   local timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date +%Y-%m-%dT%H:%M:%S)
+  local iteration_completed=$(jq -r '.iteration_completed // 0' "$state_file" 2>/dev/null)
+  local resume_from=$((iteration_completed + 1))
 
-  jq --arg status "failed" \
-     --arg error "$error" \
+  jq --arg error_msg "$error_message" \
+     --arg error_type "$error_type" \
      --arg ts "$timestamp" \
-     '.status = $status | .failed_at = $ts | .error = $error' \
+     --argjson resume "$resume_from" \
+     '.status = "failed" |
+      .failed_at = $ts |
+      .error = {
+        type: $error_type,
+        message: $error_msg,
+        timestamp: $ts
+      } |
+      .resume_from = $resume' \
      "$state_file" > "$state_file.tmp" && mv "$state_file.tmp" "$state_file"
 }
 

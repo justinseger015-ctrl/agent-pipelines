@@ -238,16 +238,32 @@ run_stage() {
     local exit_code=$?
     set -e
 
-    if [ $exit_code -ne 0 ]; then
-      echo ""
-      echo "Warning: Claude exited with code $exit_code"
-      echo "   Continuing to next iteration..."
-      echo ""
-    fi
-
     # Get iteration directory path (from context file location)
     local iter_dir="$(dirname "$context_file")"
     local status_file="$iter_dir/status.json"
+
+    # Phase 5: Fail fast - no retries, immediate failure with clear state
+    if [ $exit_code -ne 0 ]; then
+      local error_msg="Claude process exited with code $exit_code"
+
+      # Write error status to iteration
+      create_error_status "$status_file" "$error_msg"
+
+      # Update state with structured failure info
+      mark_failed "$state_file" "$error_msg" "exit_code"
+
+      echo ""
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "  Session failed at iteration $i"
+      echo "  Error: $error_msg"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo ""
+      echo "To resume: ./scripts/run.sh loop $stage_type $session $max_iterations --resume"
+      echo ""
+
+      record_completion "failed" "$session" "$stage_type"
+      return 1
+    fi
 
     # Phase 3: Save output snapshot to iteration directory
     if [ -n "$output" ]; then
@@ -462,6 +478,30 @@ run_pipeline() {
       local output=$(execute_claude "$resolved_prompt" "$stage_model" "$output_file")
       local exit_code=$?
       set -e
+
+      # Phase 5: Fail fast - no retries, immediate failure with clear state
+      if [ $exit_code -ne 0 ]; then
+        local error_msg="Claude process exited with code $exit_code during stage '$stage_name'"
+
+        # Write error status to iteration
+        create_error_status "$status_file" "$error_msg"
+
+        # Update state with structured failure info
+        update_stage "$state_file" "$stage_idx" "$stage_name" "failed"
+        mark_failed "$state_file" "$error_msg" "exit_code"
+
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "  Pipeline failed during stage: $stage_name"
+        echo "  Iteration: $iteration"
+        echo "  Error: $error_msg"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "To resume: ./scripts/run.sh pipeline $pipeline_file $session --resume"
+        echo ""
+
+        return 1
+      fi
 
       # Phase 3: Save output snapshot to iteration directory
       if [ -n "$output" ]; then
