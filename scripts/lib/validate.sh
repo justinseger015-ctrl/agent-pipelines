@@ -11,8 +11,8 @@
 VALIDATE_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$VALIDATE_SCRIPT_DIR/yaml.sh"
 
-# Known template variables
-KNOWN_VARS="SESSION SESSION_NAME ITERATION INDEX PERSPECTIVE OUTPUT OUTPUT_PATH PROGRESS PROGRESS_FILE INPUTS"
+# Known template variables (including v3 variables: CTX, STATUS)
+KNOWN_VARS="SESSION SESSION_NAME ITERATION INDEX PERSPECTIVE OUTPUT OUTPUT_PATH PROGRESS PROGRESS_FILE INPUTS CTX STATUS"
 
 # Validate a loop configuration
 # Usage: validate_loop "loop-name" [--quiet]

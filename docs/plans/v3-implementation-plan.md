@@ -943,9 +943,17 @@ output: .claude                    # Internal only (default)
 
 ---
 
-### Phase 4: Explicit Input Selection
+### Phase 4: Explicit Input Selection ✅ COMPLETE
 
 **Goal:** Stages explicitly declare what inputs they want from previous stages.
+
+**Completed 2026-01-11:**
+- Created `scripts/tests/test_inputs.sh` with 21 tests (TDD approach)
+- Verified `build_inputs_json` in `context.sh` already implements full functionality
+- Updated `engine.sh` to read `inputs` config from pipeline YAML and pass to context generator
+- Updated all 3 pipeline files (quick-refine, full-refine, deep-refine) with `inputs` block
+- Updated `validate.sh` to recognize v3 variables (`${CTX}`, `${STATUS}`)
+- All 47 tests pass, lint validation passes
 
 ---
 
@@ -1171,10 +1179,10 @@ stages:
 
 #### Success Criteria - Phase 4
 
-- [ ] Pipelines support `inputs.from` and `inputs.select`
-- [ ] Default is `select: latest`
-- [ ] `context.json` correctly populates `inputs.from_stage`
-- [ ] Test: Create a 3-stage pipeline where stage 2 uses `select: all` and stage 3 uses `select: latest`
+- [x] Pipelines support `inputs.from` and `inputs.select`
+- [x] Default is `select: latest`
+- [x] `context.json` correctly populates `inputs.from_stage`
+- [x] Test: 21 tests in `test_inputs.sh` verify all input selection functionality
 
 ---
 

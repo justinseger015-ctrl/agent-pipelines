@@ -12,3 +12,6 @@ stages:
   - name: refine-beads
     loop: refine-beads
     runs: 3
+    inputs:
+      from: improve-plan
+      select: latest

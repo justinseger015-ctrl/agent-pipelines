@@ -368,9 +368,12 @@ run_pipeline() {
     local stage_prompt=$(json_get "$pipeline_json" ".stages[$stage_idx].prompt" "")
     local stage_completion=$(json_get "$pipeline_json" ".stages[$stage_idx].completion" "")
     local stage_desc=$(json_get "$pipeline_json" ".stages[$stage_idx].description" "")
+    # v3: Get inputs configuration
+    local stage_inputs_from=$(json_get "$pipeline_json" ".stages[$stage_idx].inputs.from" "")
+    local stage_inputs_select=$(json_get "$pipeline_json" ".stages[$stage_idx].inputs.select" "latest")
 
-    # Create stage output directory
-    local stage_dir="$run_dir/stage-$((stage_idx + 1))-$stage_name"
+    # Create stage output directory (v3 format: stage-00-name)
+    local stage_dir="$run_dir/stage-$(printf '%02d' $stage_idx)-$stage_name"
     mkdir -p "$stage_dir"
 
     echo "┌──────────────────────────────────────────────────────────────"
@@ -404,7 +407,24 @@ run_pipeline() {
 
     # Run iterations
     for run_idx in $(seq 0 $((stage_runs - 1))); do
-      echo "  Iteration $((run_idx + 1))/$stage_runs..."
+      local iteration=$((run_idx + 1))
+      echo "  Iteration $iteration/$stage_runs..."
+
+      # Build stage config JSON for v3 context generation
+      local stage_config_json=$(jq -n \
+        --arg id "$stage_name" \
+        --arg name "$stage_name" \
+        --argjson index "$stage_idx" \
+        --arg loop "$stage_type" \
+        --argjson max_iterations "$stage_runs" \
+        --arg inputs_from "$stage_inputs_from" \
+        --arg inputs_select "$stage_inputs_select" \
+        '{id: $id, name: $name, index: $index, loop: $loop, max_iterations: $max_iterations, inputs: {from: $inputs_from, select: $inputs_select}}')
+
+      # Generate context.json for this iteration (v3)
+      local context_file=$(generate_context "$session" "$iteration" "$stage_config_json" "$run_dir")
+      local iter_dir="$(dirname "$context_file")"
+      local status_file="$iter_dir/status.json"
 
       # Determine output file
       local output_file
@@ -420,17 +440,19 @@ run_pipeline() {
         perspective=$(echo "$perspectives" | jq -r ".[$run_idx] // empty" 2>/dev/null)
       fi
 
-      # Build variables
+      # Build variables (v3: includes context file)
       local vars_json=$(jq -n \
         --arg session "$session" \
-        --arg iteration "$((run_idx + 1))" \
+        --arg iteration "$iteration" \
         --arg index "$run_idx" \
         --arg perspective "$perspective" \
         --arg output "$output_file" \
         --arg progress "$progress_file" \
         --arg run_dir "$run_dir" \
         --arg stage_idx "$stage_idx" \
-        '{session: $session, iteration: $iteration, index: $index, perspective: $perspective, output: $output, progress: $progress, run_dir: $run_dir, stage_idx: $stage_idx}')
+        --arg context_file "$context_file" \
+        --arg status_file "$status_file" \
+        '{session: $session, iteration: $iteration, index: $index, perspective: $perspective, output: $output, progress: $progress, run_dir: $run_dir, stage_idx: $stage_idx, context_file: $context_file, status_file: $status_file}')
 
       # Resolve prompt
       local resolved_prompt=$(resolve_prompt "$stage_prompt" "$vars_json")
@@ -438,13 +460,23 @@ run_pipeline() {
       # Execute
       set +e
       local output=$(execute_claude "$resolved_prompt" "$stage_model" "$output_file")
+      local exit_code=$?
       set -e
 
-      # Check completion (v3: pass status file path, falls back gracefully if not exists)
-      local pipeline_status_file="$stage_dir/run-$run_idx-status.json"
+      # Phase 3: Save output snapshot to iteration directory
+      if [ -n "$output" ]; then
+        echo "$output" > "$iter_dir/output.md"
+      fi
+
+      # Phase 3: Create error status if agent didn't write status.json
+      if [ ! -f "$status_file" ]; then
+        create_error_status "$status_file" "Agent did not write status.json"
+      fi
+
+      # Check completion (v3: pass status file path)
       if [ -n "$stage_completion" ] && type check_completion &>/dev/null; then
-        if check_completion "$session" "$state_file" "$pipeline_status_file"; then
-          echo "  ✓ Completion condition met after $((run_idx + 1)) iterations"
+        if check_completion "$session" "$state_file" "$status_file"; then
+          echo "  ✓ Completion condition met after $iteration iterations"
           break
         fi
       fi
