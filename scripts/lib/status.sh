@@ -176,55 +176,6 @@ create_default_status() {
     }' > "$status_file"
 }
 
-# Convert legacy output parsing to status.json format
-# Usage: legacy_output_to_status "$output" "$status_file" "$parse_spec"
-# parse_spec example: "plateau:PLATEAU reasoning:REASONING"
-legacy_output_to_status() {
-  local output=$1
-  local status_file=$2
-  local parse_spec=$3
-  local timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date +%Y-%m-%dT%H:%M:%S)
-
-  local decision="continue"
-  local reason=""
-  local plateau=""
-  local reasoning=""
-
-  # Parse PLATEAU: true/false
-  plateau=$(echo "$output" | grep -i "^PLATEAU:" | head -1 | cut -d: -f2 | tr -d ' ' | tr '[:upper:]' '[:lower:]')
-
-  # Parse REASONING:
-  reasoning=$(echo "$output" | grep -i "^REASONING:" | head -1 | cut -d: -f2-)
-
-  # Convert plateau to decision
-  if [ "$plateau" = "true" ] || [ "$plateau" = "yes" ]; then
-    decision="stop"
-    reason="${reasoning:-Plateau reached}"
-  else
-    decision="continue"
-    reason="${reasoning:-Work continues}"
-  fi
-
-  # Ensure parent directory exists
-  local status_dir=$(dirname "$status_file")
-  [ -n "$status_dir" ] && [ "$status_dir" != "." ] && mkdir -p "$status_dir"
-
-  jq -n \
-    --arg decision "$decision" \
-    --arg reason "$reason" \
-    --arg summary "Converted from legacy output format" \
-    --arg ts "$timestamp" \
-    '{
-      decision: $decision,
-      reason: $reason,
-      summary: $summary,
-      work: {items_completed: [], files_touched: []},
-      errors: [],
-      timestamp: $ts,
-      _legacy: true
-    }' > "$status_file"
-}
-
 # Extract status data for state history
 # Usage: status_to_history_json "$status_file"
 # Returns: JSON object suitable for appending to state history

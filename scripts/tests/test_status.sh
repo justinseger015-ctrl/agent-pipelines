@@ -319,57 +319,6 @@ test_create_default_status() {
 }
 
 #-------------------------------------------------------------------------------
-# legacy_output_to_status Tests
-#-------------------------------------------------------------------------------
-
-test_legacy_output_plateau_true() {
-  local test_dir=$(mktemp -d)
-  local status_file="$test_dir/status.json"
-
-  local output="Some output
-PLATEAU: true
-REASONING: No more improvements needed"
-
-  legacy_output_to_status "$output" "$status_file" "plateau:PLATEAU reasoning:REASONING"
-
-  assert_file_exists "$status_file" "Status file created"
-  assert_json_field "$status_file" ".decision" "stop" "PLATEAU: true converts to decision: stop"
-  assert_json_field "$status_file" ".reason" " No more improvements needed" "REASONING becomes reason"
-  assert_json_field "$status_file" "._legacy" "true" "_legacy flag set"
-
-  rm -rf "$test_dir"
-}
-
-test_legacy_output_plateau_false() {
-  local test_dir=$(mktemp -d)
-  local status_file="$test_dir/status.json"
-
-  local output="Some output
-PLATEAU: false
-REASONING: More work to do"
-
-  legacy_output_to_status "$output" "$status_file" "plateau:PLATEAU reasoning:REASONING"
-
-  assert_json_field "$status_file" ".decision" "continue" "PLATEAU: false converts to decision: continue"
-
-  rm -rf "$test_dir"
-}
-
-test_legacy_output_plateau_yes() {
-  local test_dir=$(mktemp -d)
-  local status_file="$test_dir/status.json"
-
-  local output="PLATEAU: yes
-REASONING: Done"
-
-  legacy_output_to_status "$output" "$status_file" ""
-
-  assert_json_field "$status_file" ".decision" "stop" "PLATEAU: yes converts to decision: stop"
-
-  rm -rf "$test_dir"
-}
-
-#-------------------------------------------------------------------------------
 # status_to_history_json Tests
 #-------------------------------------------------------------------------------
 
@@ -453,10 +402,6 @@ run_test "create_error_status: basic" test_create_error_status
 run_test "create_error_status: creates directory" test_create_error_status_creates_directory
 
 run_test "create_default_status: basic" test_create_default_status
-
-run_test "legacy_output_to_status: PLATEAU true" test_legacy_output_plateau_true
-run_test "legacy_output_to_status: PLATEAU false" test_legacy_output_plateau_false
-run_test "legacy_output_to_status: PLATEAU yes" test_legacy_output_plateau_yes
 
 run_test "status_to_history_json: full status" test_status_to_history_json
 run_test "status_to_history_json: missing file" test_status_to_history_json_missing_file
