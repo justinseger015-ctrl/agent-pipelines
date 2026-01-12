@@ -5,7 +5,7 @@ description: Edit existing stages and pipelines. Use when user wants to modify l
 
 ## What This Skill Does
 
-Modifies existing stage and pipeline configurations. Direct editing—no architecture agent needed.
+Modifies existing stage and pipeline configurations. Conversational approach—understand what the user wants, figure out what to edit, confirm before changing.
 
 ## Natural Skill Detection
 
@@ -14,74 +14,109 @@ Trigger on:
 - "Change the termination strategy for..."
 - "Modify the work loop to use..."
 - "Update the pipeline config..."
+- "Make the improve-plan stage use opus"
 - `/pipeline edit`
+
+## Philosophy
+
+**Don't ask menu questions.** The user will tell you what they want changed. Your job is to:
+
+1. Listen to what they want
+2. Figure out which files need editing
+3. Propose a plan
+4. Execute after confirmation
 
 ## Intake
 
-Use AskUserQuestion to identify the target:
+If the user says `/pipeline edit` without context, ask an open-ended question:
 
-```json
-{
-  "questions": [{
-    "question": "What do you want to edit?",
-    "header": "Target",
-    "options": [
-      {"label": "Stage", "description": "Edit a stage in scripts/loops/"},
-      {"label": "Pipeline", "description": "Edit a multi-stage pipeline in scripts/pipelines/"}
-    ],
-    "multiSelect": false
-  }]
-}
-```
+> What would you like to change?
+
+Then listen. They might say:
+- "Make the elegance stage run longer" → Edit `scripts/loops/elegance/loop.yaml`
+- "Change the prompt for refine-beads" → Edit `scripts/loops/refine-beads/prompt.md`
+- "Add another stage to full-refine" → Edit `scripts/pipelines/full-refine.yaml`
 
 ## Workflow
 
 ```
-Step 1: IDENTIFY TARGET
-├─ Stage or Pipeline?
-└─ Which specific one?
+Step 1: UNDERSTAND
+├─ Listen to what the user wants
+├─ Ask clarifying questions if genuinely unclear
+└─ Infer the target (stage/pipeline, which one, what property)
 
-Step 2: LOAD CURRENT CONFIG
-├─ Read loop.yaml + prompt.md (for stage)
-└─ Read pipeline.yaml (for pipeline)
+Step 2: INVESTIGATE
+├─ Read the current configuration
+├─ Understand what exists
+└─ Identify exactly what needs to change
 
-Step 3: COLLECT CHANGES
-├─ What aspects to change?
-├─ Termination, iterations, model, prompt?
-└─ Get specific values
+Step 3: PROPOSE PLAN
+├─ "Here's what I'll change:"
+├─ Show the specific edits
+└─ Ask: "Does this look right?"
 
-Step 4: APPLY CHANGES
-├─ Edit files
+Step 4: EXECUTE (after confirmation)
+├─ Make the edits
 ├─ Run lint validation
-└─ Show diff
-
-Step 5: CONFIRM
-├─ Present changes
-└─ Get yes/no confirmation
+└─ Show the result
 ```
 
-Read `workflows/edit.md` for detailed steps.
+## Investigation
 
-## Quick Reference
+Before proposing changes, read the relevant files:
 
 ```bash
-# List stages
-ls scripts/loops/
-
-# List pipelines
-ls scripts/pipelines/*.yaml
-
-# View stage config
+# For a stage
 cat scripts/loops/{stage}/loop.yaml
 cat scripts/loops/{stage}/prompt.md
 
-# View pipeline config
+# For a pipeline
 cat scripts/pipelines/{name}.yaml
 
-# Validate after edits
+# To see what exists
+ls scripts/loops/
+ls scripts/pipelines/*.yaml
+```
+
+## Proposing Changes
+
+Present a clear plan before editing:
+
+```markdown
+## Proposed Changes
+
+**Target:** `scripts/loops/elegance/loop.yaml`
+
+**Current:**
+```yaml
+termination:
+  type: judgment
+  consensus: 2
+```
+
+**After:**
+```yaml
+termination:
+  type: judgment
+  consensus: 3
+```
+
+Does this look right?
+```
+
+Only proceed after explicit confirmation.
+
+## Validation
+
+After making changes, always validate:
+
+```bash
 ./scripts/run.sh lint loop {stage}
+# or
 ./scripts/run.sh lint pipeline {name}.yaml
 ```
+
+If validation fails, fix the issue before presenting the result.
 
 ## Editable Properties
 
@@ -113,12 +148,6 @@ cat scripts/pipelines/{name}.yaml
 | `stages[].runs` | Max iterations for this stage |
 | `stages[].inputs` | Dependencies on previous stages |
 
-## References Index
-
-| Reference | Purpose |
-|-----------|---------|
-| (inherits from pipeline-designer) | |
-
 ## Workflows Index
 
 | Workflow | Purpose |
@@ -127,9 +156,9 @@ cat scripts/pipelines/{name}.yaml
 
 ## Success Criteria
 
-- [ ] Target correctly identified
-- [ ] Current config loaded and presented
-- [ ] Changes collected and applied
-- [ ] Lint validation passed
-- [ ] Diff shown to user
-- [ ] Explicit confirmation received
+- [ ] Understood what user wants without menu questions
+- [ ] Investigated current configuration
+- [ ] Proposed clear plan with before/after
+- [ ] Got explicit confirmation before editing
+- [ ] Made changes and validated with lint
+- [ ] Showed final result

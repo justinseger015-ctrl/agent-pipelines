@@ -1,180 +1,140 @@
-# Workflow: Edit Existing Configuration
+# Workflow: Edit Configuration
 
-Modify existing stage or pipeline configurations. Direct modification—no architecture agent needed.
+Modify existing stage or pipeline configurations through conversation.
 
-## Step 1: Identify Target
+## Philosophy
 
-Ask what to edit:
+**Don't ask menu questions.** Listen, investigate, propose, confirm, execute.
 
-```json
-{
-  "questions": [{
-    "question": "What do you want to edit?",
-    "header": "Target",
-    "options": [
-      {"label": "Stage (loop)", "description": "Edit a stage in scripts/loops/"},
-      {"label": "Pipeline", "description": "Edit a pipeline in scripts/pipelines/"}
-    ],
-    "multiSelect": false
-  }]
-}
-```
+## Step 1: Understand
 
-## Step 2: List Available Options
+Listen to what the user wants. If they said `/pipeline edit` with no context:
 
-### For Stage
+> What would you like to change?
 
-```bash
-ls scripts/loops/
-```
+Otherwise, parse their request. Examples:
 
-Present as options:
+| User Says | Target | Property |
+|-----------|--------|----------|
+| "Make elegance run for 10 iterations" | `scripts/loops/elegance/loop.yaml` | `termination.max_iterations` |
+| "Change improve-plan to use opus" | `scripts/loops/improve-plan/loop.yaml` | `model` |
+| "Edit the refine-beads prompt" | `scripts/loops/refine-beads/prompt.md` | content |
+| "Add a stage to full-refine" | `scripts/pipelines/full-refine.yaml` | `stages[]` |
 
-```json
-{
-  "questions": [{
-    "question": "Which stage do you want to edit?",
-    "header": "Stage",
-    "options": [
-      {"label": "work", "description": "Implementation stage"},
-      {"label": "improve-plan", "description": "Plan refinement stage"},
-      // ... dynamically from ls output
-    ],
-    "multiSelect": false
-  }]
-}
-```
+If genuinely unclear, ask a clarifying question. But try to infer first.
 
-### For Pipeline
+## Step 2: Investigate
+
+Read the current configuration:
 
 ```bash
-ls scripts/pipelines/*.yaml 2>/dev/null
-```
-
-Present similarly.
-
-## Step 3: Load Current Config
-
-### For Stage
-
-```bash
+# For stages
 cat scripts/loops/{stage}/loop.yaml
 cat scripts/loops/{stage}/prompt.md
+
+# For pipelines
+cat scripts/pipelines/{name}.yaml
+
+# To see what exists
+ls scripts/loops/
+ls scripts/pipelines/*.yaml
 ```
 
-### For Pipeline
+Understand:
+- What currently exists
+- What specifically needs to change
+- Any constraints or dependencies
 
-```bash
-cat scripts/pipelines/{pipeline}.yaml
-```
+## Step 3: Propose Plan
 
-Present the current configuration to the user.
+Present a clear before/after:
 
-## Step 4: Collect Changes
+```markdown
+## Proposed Changes
 
-Ask what they want to change:
+**Target:** `scripts/loops/elegance/loop.yaml`
 
-```json
-{
-  "questions": [{
-    "question": "What would you like to change?",
-    "header": "Change Type",
-    "options": [
-      {"label": "Termination strategy", "description": "Change when/how it stops"},
-      {"label": "Iteration counts", "description": "Adjust min/max/consensus"},
-      {"label": "Model", "description": "Change which model runs"},
-      {"label": "Prompt", "description": "Edit the prompt template"}
-    ],
-    "multiSelect": true
-  }]
-}
-```
-
-For each selected change, ask for specifics.
-
-## Step 5: Apply Changes
-
-Make the edits using the Edit tool. Keep a record of changes.
-
-### For loop.yaml changes
-
+**Current:**
 ```yaml
-# Example: Change termination strategy
+model: sonnet
 termination:
   type: judgment
-  min_iterations: 3
   consensus: 2
 ```
 
-### For prompt.md changes
+**After:**
+```yaml
+model: opus
+termination:
+  type: judgment
+  consensus: 2
+```
 
-Edit the specific sections. Preserve the overall structure:
-- Context section with `${CTX}`, `${PROGRESS}`, `${STATUS}`
-- Autonomy grant
-- Status.json template
+**Why:** You asked to use opus for the elegance stage.
 
-## Step 6: Validate
+Does this look right?
+```
 
-Run the linter:
+For prompt changes, show the specific section being modified.
+
+For pipeline changes, show the stages array before/after.
+
+**Wait for explicit confirmation before proceeding.**
+
+## Step 4: Execute
+
+After user confirms:
+
+1. Make the edits using the Edit tool
+2. Run validation:
 
 ```bash
 ./scripts/run.sh lint loop {stage}
 # or
-./scripts/run.sh lint pipeline {pipeline}.yaml
+./scripts/run.sh lint pipeline {name}.yaml
 ```
 
-If lint fails, show errors and fix.
-
-## Step 7: Show Diff and Confirm
-
-Present what changed:
+3. If validation fails, fix and re-validate
+4. Show the result:
 
 ```markdown
-## Changes Made
+## Done
 
-### loop.yaml
-```diff
-- type: fixed
-+ type: judgment
-+ min_iterations: 3
-+ consensus: 2
+Updated `scripts/loops/elegance/loop.yaml`:
+- Changed `model` from `sonnet` to `opus`
+
+Validation: Passed
 ```
 
-### prompt.md
-No changes.
+## Handling Ambiguity
 
-Lint: PASSED
-```
+If the user's request could mean multiple things:
 
-Ask for final confirmation:
+**Bad:** Ask a menu question
+**Good:** Make your best guess and confirm
 
-```json
-{
-  "questions": [{
-    "question": "Save these changes?",
-    "header": "Confirm",
-    "options": [
-      {"label": "Yes, save", "description": "Keep the changes"},
-      {"label": "No, revert", "description": "Discard and try again"}
-    ],
-    "multiSelect": false
-  }]
-}
-```
+Example:
+> User: "Make the work stage faster"
+>
+> You: I'll reduce the delay between iterations from 3 seconds to 1 second.
+> This will make the work stage cycle faster. Does that sound right,
+> or did you mean something else by "faster"?
 
-### On "No, revert"
+## Handling Multiple Changes
 
-Undo changes and return to Step 4.
+If the user wants several changes:
 
-### On "Yes, save"
-
-Confirm the changes are saved. No further action needed.
+1. Propose all changes together
+2. Get one confirmation for the batch
+3. Execute all changes
+4. Validate once at the end
 
 ## Success Criteria
 
-- [ ] Target identified (stage or pipeline)
-- [ ] Current config loaded and presented
-- [ ] Changes collected and applied
-- [ ] Lint validation passed
-- [ ] Diff shown to user
-- [ ] Explicit confirmation received
+- [ ] Understood request without menu questions
+- [ ] Read current configuration
+- [ ] Proposed clear plan with before/after
+- [ ] Got explicit confirmation
+- [ ] Made changes
+- [ ] Validation passed
+- [ ] Showed final result
