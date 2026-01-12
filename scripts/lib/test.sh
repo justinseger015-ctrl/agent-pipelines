@@ -16,10 +16,10 @@
 #   assert_contains "haystack" "needle" "message"
 #   assert_exit_code 0 "command"
 
-# Test counters
-TESTS_PASSED=0
-TESTS_FAILED=0
-TESTS_SKIPPED=0
+# Test counters (use := to preserve values when re-sourced)
+: ${TESTS_PASSED:=0}
+: ${TESTS_FAILED:=0}
+: ${TESTS_SKIPPED:=0}
 CURRENT_TEST=""
 TEST_VERBOSE=${TEST_VERBOSE:-false}
 
