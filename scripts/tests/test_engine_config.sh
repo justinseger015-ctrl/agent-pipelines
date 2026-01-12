@@ -51,11 +51,11 @@ _parse_loop_config() {
 # Work Stage Config Tests
 #-------------------------------------------------------------------------------
 
-test_work_stage_loads_queue_termination() {
+test_work_stage_loads_fixed_termination() {
   _parse_loop_config "$SCRIPT_DIR/stages/work"
 
-  assert_eq "queue" "$STAGE_TERM_TYPE" "work stage has termination.type=queue"
-  assert_eq "beads-empty" "$STAGE_COMPLETION" "queue maps to beads-empty completion"
+  assert_eq "fixed" "$STAGE_TERM_TYPE" "work stage has termination.type=fixed"
+  assert_eq "fixed-n" "$STAGE_COMPLETION" "fixed maps to fixed-n completion"
 }
 
 #-------------------------------------------------------------------------------
@@ -168,7 +168,7 @@ echo "  Engine Config Loading Tests (v3 YAML → Env)"
 echo "═══════════════════════════════════════════════════════════════"
 echo ""
 
-run_test "work: loads queue termination" test_work_stage_loads_queue_termination
+run_test "work: loads fixed termination" test_work_stage_loads_fixed_termination
 run_test "improve-plan: loads judgment termination" test_improve_plan_loads_judgment_termination
 run_test "improve-plan: loads consensus from config" test_improve_plan_loads_consensus
 run_test "improve-plan: loads min_iterations from config" test_improve_plan_loads_min_iterations

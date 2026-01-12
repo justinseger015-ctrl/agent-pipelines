@@ -278,7 +278,7 @@ test_fixed_n_accepts_status_file_param() {
   rm -rf "$test_dir"
 }
 
-test_fixed_n_ignores_status_decision() {
+test_fixed_n_respects_status_stop() {
   source "$SCRIPT_DIR/lib/completions/fixed-n.sh"
 
   local test_dir=$(mktemp -d)
@@ -286,7 +286,7 @@ test_fixed_n_ignores_status_decision() {
   local status_file="$test_dir/status.json"
 
   echo '{"iteration": 3}' > "$state_file"
-  # Even if status says stop, fixed-n should continue until N reached
+  # Agent says stop - fixed-n should respect this and complete early
   echo '{"decision": "stop", "reason": "Agent wants to stop"}' > "$status_file"
 
   export FIXED_ITERATIONS=5
@@ -295,7 +295,7 @@ test_fixed_n_ignores_status_decision() {
   check_completion "test" "$state_file" "$status_file" >/dev/null 2>&1
   local result=$?
 
-  assert_eq "1" "$result" "Fixed-N ignores status decision, continues until N"
+  assert_eq "0" "$result" "Fixed-N respects status decision, stops early"
 
   rm -rf "$test_dir"
 }
@@ -322,6 +322,6 @@ run_test "beads-empty: continues when queue has items" test_beads_empty_continue
 run_test "beads-empty: accepts status_file param" test_beads_empty_accepts_status_file_param
 
 run_test "fixed-n: accepts status_file param" test_fixed_n_accepts_status_file_param
-run_test "fixed-n: ignores status decision" test_fixed_n_ignores_status_decision
+run_test "fixed-n: respects status stop" test_fixed_n_respects_status_stop
 
 test_summary

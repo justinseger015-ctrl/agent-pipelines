@@ -6,20 +6,20 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$SCRIPT_DIR/lib/test.sh"
 source "$SCRIPT_DIR/lib/yaml.sh"
 
-LOOPS_DIR="$SCRIPT_DIR/loops"
+STAGES_DIR="$SCRIPT_DIR/stages"
 
 #-------------------------------------------------------------------------------
 # Stage Definition Tests (v3 schema)
 #-------------------------------------------------------------------------------
 
 test_work_stage_v3_schema() {
-  local config=$(yaml_to_json "$LOOPS_DIR/work/stage.yaml")
+  local config=$(yaml_to_json "$STAGES_DIR/work/stage.yaml")
   local term_type=$(echo "$config" | jq -r '.termination.type // empty')
-  assert_eq "queue" "$term_type" "work stage uses termination.type=queue"
+  assert_eq "fixed" "$term_type" "work stage uses termination.type=fixed"
 }
 
 test_improve_plan_stage_v3_schema() {
-  local config=$(yaml_to_json "$LOOPS_DIR/improve-plan/stage.yaml")
+  local config=$(yaml_to_json "$STAGES_DIR/improve-plan/stage.yaml")
   local term_type=$(echo "$config" | jq -r '.termination.type // empty')
   local consensus=$(echo "$config" | jq -r '.termination.consensus // empty')
   assert_eq "judgment" "$term_type" "improve-plan uses termination.type=judgment"
@@ -27,7 +27,7 @@ test_improve_plan_stage_v3_schema() {
 }
 
 test_elegance_stage_v3_schema() {
-  local config=$(yaml_to_json "$LOOPS_DIR/elegance/stage.yaml")
+  local config=$(yaml_to_json "$STAGES_DIR/elegance/stage.yaml")
   local term_type=$(echo "$config" | jq -r '.termination.type // empty')
   local consensus=$(echo "$config" | jq -r '.termination.consensus // empty')
   assert_eq "judgment" "$term_type" "elegance uses termination.type=judgment"
@@ -35,13 +35,13 @@ test_elegance_stage_v3_schema() {
 }
 
 test_idea_wizard_stage_v3_schema() {
-  local config=$(yaml_to_json "$LOOPS_DIR/idea-wizard/stage.yaml")
+  local config=$(yaml_to_json "$STAGES_DIR/idea-wizard/stage.yaml")
   local term_type=$(echo "$config" | jq -r '.termination.type // empty')
   assert_eq "fixed" "$term_type" "idea-wizard uses termination.type=fixed"
 }
 
 test_refine_beads_stage_v3_schema() {
-  local config=$(yaml_to_json "$LOOPS_DIR/refine-beads/stage.yaml")
+  local config=$(yaml_to_json "$STAGES_DIR/refine-beads/stage.yaml")
   local term_type=$(echo "$config" | jq -r '.termination.type // empty')
   local consensus=$(echo "$config" | jq -r '.termination.consensus // empty')
   assert_eq "judgment" "$term_type" "refine-beads uses termination.type=judgment"
@@ -89,7 +89,7 @@ get_prompt_path() {
 }
 
 test_prompts_use_ctx_variable() {
-  for loop_dir in "$LOOPS_DIR"/*/; do
+  for loop_dir in "$STAGES_DIR"/*/; do
     local loop_name=$(basename "$loop_dir")
     local prompt_file=$(get_prompt_path "$loop_dir")
 
@@ -104,7 +104,7 @@ test_prompts_use_ctx_variable() {
 }
 
 test_prompts_use_status_variable() {
-  for loop_dir in "$LOOPS_DIR"/*/; do
+  for loop_dir in "$STAGES_DIR"/*/; do
     local loop_name=$(basename "$loop_dir")
     local prompt_file=$(get_prompt_path "$loop_dir")
 
@@ -119,7 +119,7 @@ test_prompts_use_status_variable() {
 }
 
 test_no_deprecated_output_parse() {
-  for loop_dir in "$LOOPS_DIR"/*/; do
+  for loop_dir in "$STAGES_DIR"/*/; do
     local config_file="$loop_dir/stage.yaml"
     [ -f "$config_file" ] || continue
     local loop_name=$(basename "$loop_dir")
@@ -129,7 +129,7 @@ test_no_deprecated_output_parse() {
 }
 
 test_no_deprecated_completion_field() {
-  for loop_dir in "$LOOPS_DIR"/*/; do
+  for loop_dir in "$STAGES_DIR"/*/; do
     local config_file="$loop_dir/stage.yaml"
     [ -f "$config_file" ] || continue
     local loop_name=$(basename "$loop_dir")

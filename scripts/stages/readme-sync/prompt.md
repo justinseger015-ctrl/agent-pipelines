@@ -3,6 +3,7 @@
 Read context from: ${CTX}
 Progress file: ${PROGRESS}
 Output file: ${OUTPUT_PATH}
+Status file: ${STATUS}
 Iteration: ${ITERATION}
 
 ## Your Task
@@ -88,9 +89,11 @@ Write to ${OUTPUT_PATH}:
 
 ### Step 6: Write Status
 
+Write to `${STATUS}`:
+
 ```json
 {
-  "decision": "continue",
+  "decision": "stop",
   "reason": "Updated README in iteration ${ITERATION}",
   "summary": "What sections you updated",
   "work": {"items_completed": [], "files_touched": ["README.md", "${OUTPUT_PATH}"]},

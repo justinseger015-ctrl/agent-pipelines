@@ -27,7 +27,7 @@ test_bash_version() {
 test_scripts_directory_structure() {
   assert_dir_exists "$SCRIPT_DIR" "scripts directory exists"
   assert_dir_exists "$SCRIPT_DIR/lib" "lib directory exists"
-  assert_dir_exists "$SCRIPT_DIR/loops" "loops directory exists"
+  assert_dir_exists "$SCRIPT_DIR/stages" "stages directory exists"
   assert_dir_exists "$SCRIPT_DIR/pipelines" "pipelines directory exists"
   assert_dir_exists "$SCRIPT_DIR/tests" "tests directory exists"
 }
