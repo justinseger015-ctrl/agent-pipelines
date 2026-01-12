@@ -95,8 +95,8 @@ Mock response - no fixture found.
 
 Completed mock iteration.
 
-PLATEAU: false
-REASONING: Mock execution - would continue in real run
+## Status
+Written to status.json with decision: continue
 EOF
 }
 
@@ -116,10 +116,7 @@ This is a mock response for testing purposes.
 - Updated state
 
 ## Status
-Continuing to next iteration.
-
-PLATEAU: false
-REASONING: Mock execution - simulating continued work
+Written to status.json with decision: continue
 EOF
 }
 
@@ -260,8 +257,8 @@ Reviewed the plan and found several areas for improvement.
 ## Next Steps
 More work needed on security considerations.
 
-PLATEAU: false
-REASONING: Found significant issues to address, continuing refinement
+## Status
+Written to status.json with decision: continue (significant issues to address)
 EOF
 
   # Iteration 2: Suggest stop (first vote)
@@ -278,8 +275,8 @@ Minor improvements made. The plan is now quite solid.
 ## Assessment
 The plan covers all major requirements and edge cases.
 
-PLATEAU: true
-REASONING: Only cosmetic improvements remain, plan is ready for implementation
+## Status
+Written to status.json with decision: stop (only cosmetic improvements remain)
 EOF
 
   # Iteration 3: Confirm stop (consensus reached)
@@ -295,8 +292,8 @@ Confirmed the plan is complete and well-structured.
 ## Assessment
 Agreeing with previous assessment - plan is production-ready.
 
-PLATEAU: true
-REASONING: Confirming plateau - no further improvements identified
+## Status
+Written to status.json with decision: stop (confirming - no further improvements)
 EOF
 
   # Default (for iterations beyond 3)
@@ -305,8 +302,8 @@ EOF
 
 No changes made - plan appears complete.
 
-PLATEAU: true
-REASONING: Maintaining plateau status
+## Status
+Written to status.json with decision: stop
 EOF
 
   # v3 status templates
@@ -358,9 +355,7 @@ Reviewed available beads and selected next task.
 - Closed bead
 
 ## Status
-Continuing to next bead.
-
-<promise>COMPLETE</promise>
+Written to status.json with decision: continue (more beads available)
 EOF
 
   # v3 status

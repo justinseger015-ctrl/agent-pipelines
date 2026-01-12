@@ -13,7 +13,8 @@ scripts/
 │   ├── state.sh
 │   ├── progress.sh
 │   ├── resolve.sh
-│   ├── parse.sh
+│   ├── context.sh         # v3 context.json generation
+│   ├── status.sh          # v3 status.json handling
 │   ├── notify.sh
 │   ├── lock.sh            # Session locking
 │   └── completions/       # Stopping conditions
@@ -182,7 +183,10 @@ Each loop has two files:
 ```yaml
 name: my-loop
 description: What this loop does
-completion: plateau  # or beads-empty, fixed-n, all-items
+termination:
+  type: judgment    # or queue, fixed
+  consensus: 2      # for judgment: consecutive stops needed
+  min_iterations: 2 # for judgment: start checking after this many
 delay: 3
 ```
 
@@ -190,15 +194,15 @@ delay: 3
 ```markdown
 # My Agent
 
-Session: ${SESSION_NAME}
+Read context from: ${CTX}
 Iteration: ${ITERATION}
 
 ## Task
 ...
 
 ## Output
-PLATEAU: true/false
-REASONING: [why]
+Write status to ${STATUS}:
+{"decision": "continue|stop|error", "reason": "..."}
 ```
 
 ## Pipeline Format
@@ -222,23 +226,22 @@ stages:
       Write to: ${OUTPUT}
 ```
 
-## Variables
+## Variables (v3)
 
 | Variable | Description |
 |----------|-------------|
-| `${SESSION_NAME}` | Session name |
+| `${CTX}` | Path to context.json with full iteration context |
+| `${STATUS}` | Path where agent writes status.json |
+| `${PROGRESS}` | Path to progress file |
 | `${ITERATION}` | Current iteration (1-based) |
-| `${PROGRESS_FILE}` | Path to progress file |
-| `${OUTPUT}` | Path to write output |
-| `${PERSPECTIVE}` | Current perspective (fan-out) |
-| `${INPUTS.stage-name}` | Outputs from named stage |
-| `${INPUTS}` | Outputs from previous stage |
+| `${SESSION_NAME}` | Session name |
+| `${INPUTS.stage-name}` | Outputs from named stage (pipelines) |
+| `${INPUTS}` | Outputs from previous stage (pipelines) |
 
-## Completion Strategies
+## Termination Types (v3)
 
-| Strategy | Stops When |
-|----------|------------|
-| `beads-empty` | No beads remain |
-| `plateau` | 2 agents agree it's done |
-| `fixed-n` | N iterations complete |
-| `all-items` | All items processed |
+| Type | Stops When |
+|------|------------|
+| `queue` | External queue empty (`bd ready`) |
+| `judgment` | N agents write `decision: stop` |
+| `fixed` | N iterations complete |

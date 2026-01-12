@@ -40,7 +40,6 @@ source "$LIB_DIR/yaml.sh"
 source "$LIB_DIR/state.sh"
 source "$LIB_DIR/progress.sh"
 source "$LIB_DIR/resolve.sh"
-source "$LIB_DIR/parse.sh"
 source "$LIB_DIR/context.sh"
 source "$LIB_DIR/status.sh"
 source "$LIB_DIR/notify.sh"
@@ -294,19 +293,8 @@ run_stage() {
       create_error_status "$status_file" "Agent did not write status.json"
     fi
 
-    # Parse output (legacy support) and merge with status.json data
-    local output_json="{}"
-    if [ -n "$LOOP_OUTPUT_PARSE" ]; then
-      output_json=$(parse_outputs_to_json "$output" $LOOP_OUTPUT_PARSE)
-    fi
-
-    # If agent wrote status.json, extract decision for state history
-    local history_json="$output_json"
-    if [ -f "$status_file" ]; then
-      local status_data=$(status_to_history_json "$status_file")
-      # Merge status data with parsed output (status takes precedence)
-      history_json=$(echo "$output_json $status_data" | jq -s 'add')
-    fi
+    # Extract status data for state history
+    local history_json=$(status_to_history_json "$status_file")
 
     # Update state - mark iteration completed with status data
     update_iteration "$state_file" "$i" "$history_json"

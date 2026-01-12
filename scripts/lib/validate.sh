@@ -417,13 +417,14 @@ dry_run_loop() {
 
   # Load config
   local config=$(yaml_to_json "$dir/loop.yaml")
-  local completion=$(json_get "$config" ".completion" "")
-  local delay=$(json_get "$config" ".delay" "3")
-  local min_iter=$(json_get "$config" ".min_iterations" "1")
-  local output_parse=$(json_get "$config" ".output_parse" "")
-  local check_before=$(json_get "$config" ".check_before" "false")
   local description=$(json_get "$config" ".description" "")
+  local delay=$(json_get "$config" ".delay" "3")
   local prompt_file=$(json_get "$config" ".prompt" "prompt.md")
+
+  # v3 termination fields
+  local term_type=$(json_get "$config" ".termination.type" "")
+  local consensus=$(json_get "$config" ".termination.consensus" "2")
+  local min_iter=$(json_get "$config" ".termination.min_iterations" "2")
 
   echo "## Configuration"
   echo ""
@@ -431,11 +432,12 @@ dry_run_loop() {
   echo "|-------|-------|"
   echo "| name | $name |"
   echo "| description | $description |"
-  echo "| completion | $completion |"
-  [ -n "$output_parse" ] && echo "| output_parse | $output_parse |"
+  if [ -n "$term_type" ]; then
+    echo "| termination.type | $term_type |"
+    [ "$term_type" = "judgment" ] && echo "| termination.consensus | $consensus |"
+    [ "$term_type" = "judgment" ] && echo "| termination.min_iterations | $min_iter |"
+  fi
   echo "| delay | ${delay}s |"
-  [ "$completion" = "plateau" ] && echo "| min_iterations | $min_iter |"
-  [ "$check_before" = "true" ] && echo "| check_before | true |"
   echo ""
 
   echo "## Files"
@@ -445,6 +447,8 @@ dry_run_loop() {
   echo "| Run directory | .claude/pipeline-runs/${session}/ |"
   echo "| State file | .claude/pipeline-runs/${session}/state.json |"
   echo "| Progress file | .claude/pipeline-runs/${session}/progress-${session}.md |"
+  echo "| Context file | .claude/pipeline-runs/${session}/context.json |"
+  echo "| Status file | .claude/pipeline-runs/${session}/status.json |"
   echo "| Lock file | .claude/locks/${session}.lock |"
   echo ""
 
@@ -467,27 +471,24 @@ EOF
   echo '```'
   echo ""
 
-  echo "## Completion Strategy"
+  echo "## Termination Strategy"
   echo ""
-  echo "**Strategy:** $completion"
+  echo "**Type:** $term_type"
   echo ""
-  case $completion in
-    beads-empty)
+  case $term_type in
+    queue)
       echo "The loop will stop when:"
       echo "- \`bd ready --label=loop/${session}\` returns 0 results"
+      echo "- Agent writes \`decision: continue\` (no error)"
       ;;
-    plateau)
+    judgment)
       echo "The loop will stop when:"
-      echo "- 2 consecutive iterations output \`PLATEAU: true\`"
+      echo "- $consensus consecutive agents write \`decision: stop\` in status.json"
       echo "- Minimum iterations before checking: $min_iter"
       ;;
-    fixed-n)
+    fixed)
       echo "The loop will stop when:"
       echo "- N iterations have completed (N specified at runtime)"
-      ;;
-    all-items)
-      echo "The loop will stop when:"
-      echo "- All items in the input list have been processed"
       ;;
   esac
 }
@@ -544,10 +545,12 @@ dry_run_pipeline() {
       echo "- **Loop:** $stage_loop"
       echo "- **Max iterations:** $stage_runs"
 
-      # Get loop's completion strategy
+      # Get loop's termination strategy (v3)
       local loop_config=$(yaml_to_json "${VALIDATE_SCRIPT_DIR}/../loops/$stage_loop/loop.yaml" 2>/dev/null)
-      local loop_completion=$(json_get "$loop_config" ".completion" "unknown")
-      echo "- **Completion:** $loop_completion"
+      local term_type=$(json_get "$loop_config" ".termination.type" "")
+      if [ -n "$term_type" ]; then
+        echo "- **Termination:** $term_type"
+      fi
     else
       echo "- **Inline prompt stage**"
       echo "- **Runs:** $stage_runs"

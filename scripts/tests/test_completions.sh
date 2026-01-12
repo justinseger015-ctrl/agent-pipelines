@@ -127,6 +127,36 @@ test_plateau_handles_missing_status_file() {
 # Beads-Empty Completion Strategy Tests
 #-------------------------------------------------------------------------------
 
+# Helper to create a mock bd command
+# Creates a mock bd script in a temp directory and prepends it to PATH
+_setup_mock_bd() {
+  local remaining=$1
+  MOCK_BD_DIR=$(mktemp -d)
+  ORIGINAL_PATH="$PATH"
+
+  # Create mock bd script
+  cat > "$MOCK_BD_DIR/bd" << EOF
+#!/bin/bash
+# Mock bd command for testing
+remaining=$remaining
+if [ "\$remaining" -gt 0 ]; then
+  for i in \$(seq 1 \$remaining); do
+    echo "beads-item-\$i"
+  done
+fi
+exit 0
+EOF
+  chmod +x "$MOCK_BD_DIR/bd"
+
+  # Prepend to PATH so our mock is found first
+  export PATH="$MOCK_BD_DIR:$PATH"
+}
+
+_teardown_mock_bd() {
+  export PATH="$ORIGINAL_PATH"
+  [ -d "$MOCK_BD_DIR" ] && rm -rf "$MOCK_BD_DIR"
+}
+
 test_beads_empty_checks_error_status() {
   source "$SCRIPT_DIR/lib/completions/beads-empty.sh"
 
@@ -137,15 +167,66 @@ test_beads_empty_checks_error_status() {
   echo '{"iteration": 1}' > "$state_file"
   echo '{"decision": "error", "reason": "Something broke"}' > "$status_file"
 
-  # Even if beads are empty, error status should not complete
-  # (This test assumes bd is not available or returns empty)
-  check_completion "nonexistent-session-xyz" "$state_file" "$status_file" >/dev/null 2>&1
+  # Mock bd to return empty (0 remaining beads)
+  _setup_mock_bd 0
+
+  # Even with empty queue, error status should prevent completion
+  check_completion "test-session" "$state_file" "$status_file" >/dev/null 2>&1
   local result=$?
+
+  _teardown_mock_bd
+  rm -rf "$test_dir"
 
   # With error status, should not complete (return 1)
   assert_eq "1" "$result" "Error status prevents completion even if queue empty"
+}
 
+test_beads_empty_completes_when_queue_empty() {
+  source "$SCRIPT_DIR/lib/completions/beads-empty.sh"
+
+  local test_dir=$(mktemp -d)
+  local state_file="$test_dir/state.json"
+  local status_file="$test_dir/status.json"
+
+  echo '{"iteration": 1}' > "$state_file"
+  echo '{"decision": "continue", "reason": "Work in progress"}' > "$status_file"
+
+  # Mock bd to return empty (0 remaining beads)
+  _setup_mock_bd 0
+
+  # With empty queue and no error, should complete
+  check_completion "test-session" "$state_file" "$status_file" >/dev/null 2>&1
+  local result=$?
+
+  _teardown_mock_bd
   rm -rf "$test_dir"
+
+  # Should complete (return 0)
+  assert_eq "0" "$result" "Empty queue with continue status should complete"
+}
+
+test_beads_empty_continues_when_queue_has_items() {
+  source "$SCRIPT_DIR/lib/completions/beads-empty.sh"
+
+  local test_dir=$(mktemp -d)
+  local state_file="$test_dir/state.json"
+  local status_file="$test_dir/status.json"
+
+  echo '{"iteration": 1}' > "$state_file"
+  echo '{"decision": "continue", "reason": "Work in progress"}' > "$status_file"
+
+  # Mock bd to return 3 items
+  _setup_mock_bd 3
+
+  # With items in queue, should not complete
+  check_completion "test-session" "$state_file" "$status_file" >/dev/null 2>&1
+  local result=$?
+
+  _teardown_mock_bd
+  rm -rf "$test_dir"
+
+  # Should not complete (return 1)
+  assert_eq "1" "$result" "Queue with items should not complete"
 }
 
 test_beads_empty_accepts_status_file_param() {
@@ -158,14 +239,18 @@ test_beads_empty_accepts_status_file_param() {
   echo '{"iteration": 1}' > "$state_file"
   echo '{"decision": "continue", "reason": "Work in progress"}' > "$status_file"
 
+  # Mock bd to return items (so we don't complete)
+  _setup_mock_bd 1
+
   # Function should accept 3 parameters without error
   check_completion "test" "$state_file" "$status_file" >/dev/null 2>&1
   local result=$?
 
+  _teardown_mock_bd
+  rm -rf "$test_dir"
+
   # Verify function ran without crashing (exit code 0 or 1, not crash)
   assert_true "$([ $result -le 1 ] && echo true || echo false)" "beads-empty accepts status_file parameter without crashing"
-
-  rm -rf "$test_dir"
 }
 
 #-------------------------------------------------------------------------------
@@ -232,6 +317,8 @@ run_test "plateau: requires consensus" test_plateau_requires_consensus
 run_test "plateau: handles missing status file" test_plateau_handles_missing_status_file
 
 run_test "beads-empty: checks error status" test_beads_empty_checks_error_status
+run_test "beads-empty: completes when queue empty" test_beads_empty_completes_when_queue_empty
+run_test "beads-empty: continues when queue has items" test_beads_empty_continues_when_queue_has_items
 run_test "beads-empty: accepts status_file param" test_beads_empty_accepts_status_file_param
 
 run_test "fixed-n: accepts status_file param" test_fixed_n_accepts_status_file_param

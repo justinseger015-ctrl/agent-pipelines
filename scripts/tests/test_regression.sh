@@ -144,14 +144,14 @@ test_no_deprecated_completion_field() {
 # Deprecated Code Removal Tests
 #-------------------------------------------------------------------------------
 
-test_parse_sh_marked_deprecated() {
+test_parse_sh_removed() {
   local parse_file="$SCRIPT_DIR/lib/parse.sh"
-  if [ -f "$parse_file" ]; then
-    local content=$(cat "$parse_file")
-    assert_contains "$content" "DEPRECATED" "parse.sh is marked as deprecated"
-  else
-    skip_test "parse.sh does not exist (already removed)"
-  fi
+  assert_file_not_exists "$parse_file" "parse.sh should be removed (deprecated in v3)"
+}
+
+test_all_items_sh_removed() {
+  local all_items_file="$SCRIPT_DIR/lib/completions/all-items.sh"
+  assert_file_not_exists "$all_items_file" "all-items.sh should be removed (unused in v3)"
 }
 
 #-------------------------------------------------------------------------------
@@ -167,6 +167,7 @@ run_test "Prompts use CTX variable" test_prompts_use_ctx_variable
 run_test "Prompts use STATUS variable" test_prompts_use_status_variable
 run_test "No deprecated output_parse" test_no_deprecated_output_parse
 run_test "No deprecated completion field" test_no_deprecated_completion_field
-run_test "parse.sh marked deprecated" test_parse_sh_marked_deprecated
+run_test "parse.sh removed" test_parse_sh_removed
+run_test "all-items.sh removed" test_all_items_sh_removed
 
 test_summary

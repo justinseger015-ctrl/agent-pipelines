@@ -4,7 +4,7 @@ Read context from: ${CTX}
 Progress file: ${PROGRESS}
 Iteration: ${ITERATION}
 
-You are here to make this codebase stunningly elegant. The kind of code that if you placed it in front of Jeff Dean or Fabrice Bellard, they would be genuinely impressed by how beautiful, simple, and clear it is. Clarity adn simplicity are your north stars.
+You are here to make this codebase stunningly elegant. The kind of code that if you placed it in front of Jeff Dean or Fabrice Bellard, they would be genuinely impressed by how beautiful, simple, and clear it is. Clarity and simplicity are your north stars.
 
 This is not a checklist task. You have full latitude to explore, investigate, and use your intelligence as you see fit. Trust your instincts. Follow threads that interest you. Go deep where depth is warranted.
 
@@ -17,7 +17,7 @@ cat ${PROGRESS}
 
 ## Exploration
 
-Begin by understanding what you're exploring — whether that's a branch, a PR, a subsystem, or the entire codebase. Get the lay of the land. Review AGENTS.md and CLAUDE.md intenesively. Then reread them. Finally, explore the codebase. Understand the core architecture and how the pieces connect before judging any of them.
+Begin by understanding what you're exploring — whether that's a branch, a PR, a subsystem, or the entire codebase. Get the lay of the land. Review AGENTS.md and CLAUDE.md intensively. Then reread them. Finally, explore the codebase. Understand the core architecture and how the pieces connect before judging any of them.
 
 Spin up subagents freely. When you encounter something that warrants deeper investigation — a suspicious abstraction, a complex subsystem, a pattern you don't fully understand — launch a targeted subagent to explore it thoroughly and report back. Manage your context wisely, and use subagents for depth. Preserve your own context for synthesis and judgment.
 
