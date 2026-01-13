@@ -691,6 +691,49 @@ echo "Source lines: $(find src -name '*.ts' -exec wc -l {} + | tail -1)"
 
 ## Process
 
+### 0. Run Tests & Capture Metrics
+
+Before auditing code quality, run the test suite and capture metrics:
+
+**Check for metrics config:**
+```bash
+# Look for metrics config created by /test-setup
+cat .test-metrics.json 2>/dev/null
+```
+
+**Run tests and capture:**
+```bash
+# Time the test run
+time npm test 2>&1 | tee test-output.txt
+
+# Extract key metrics:
+# - Total tests, passed, failed, skipped
+# - Execution time
+# - Coverage (if available)
+```
+
+**Compare against targets (if `.test-metrics.json` exists):**
+
+| Metric | Actual | Target | Status |
+|--------|--------|--------|--------|
+| Pass rate | 98% | >99% | ⚠️ Warning |
+| Execution time | 45s | <300s | ✅ Healthy |
+| Coverage | 72% | >80% | ⚠️ Warning |
+| Skipped tests | 3% | <1% | ❌ Critical |
+
+Include this metrics summary at the TOP of the audit report before diving into code quality issues.
+
+**If no `.test-metrics.json` exists**, use these defaults:
+
+| Metric | Healthy | Warning | Critical |
+|--------|---------|---------|----------|
+| Pass rate | >99% | 95-99% | <95% |
+| Flakiness | <1% | 1-5% | >5% |
+| Unit test time | <5 min | 5-15 min | >15 min |
+| Full suite time | <30 min | 30-60 min | >60 min |
+| Coverage | >80% | 60-80% | <60% |
+| Skipped tests | <1% | 1-5% | >5% |
+
 ### 1. Identify Scope
 
 Ask what to audit:
@@ -896,8 +939,16 @@ After fixing, provide summary:
 
 ## References
 
+**Code Quality:**
 - `references/anti-patterns.md` - Detailed anti-pattern detection heuristics
 - `references/quick-checklist.md` - Rapid audit checklist
 - `references/layer-analysis.md` - Test layer gap detection
+
+**Environment & Data:**
 - `references/ci-cd-issues.md` - CI/CD environment problem patterns
 - `references/test-data.md` - Test data management patterns
+
+**Metrics & Health (merged from test-health):**
+- `references/metrics.md` - Metric collection, interpretation, and trending
+- `references/flakiness.md` - Flaky test detection, quarantine, and elimination
+- `references/performance.md` - Finding and fixing slow tests

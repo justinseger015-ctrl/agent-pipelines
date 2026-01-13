@@ -167,7 +167,38 @@ describe('Calculator', () => {
 });
 ```
 
-### 7. Create Conventions Document
+### 7. Create Metrics Configuration
+
+Save to project root as `.test-metrics.json`:
+
+```json
+{
+  "version": 1,
+  "targets": {
+    "pass_rate": { "healthy": 99, "warning": 95, "critical": 90 },
+    "flakiness_percent": { "healthy": 1, "warning": 5, "critical": 10 },
+    "unit_test_time_seconds": { "healthy": 300, "warning": 600, "critical": 900 },
+    "full_suite_time_seconds": { "healthy": 1800, "warning": 3600, "critical": 7200 },
+    "coverage_percent": { "healthy": 80, "warning": 60, "critical": 40 },
+    "skipped_tests_percent": { "healthy": 1, "warning": 5, "critical": 10 }
+  },
+  "commands": {
+    "test": "npm test",
+    "test_unit": "npm run test:unit",
+    "test_integration": "npm run test:integration",
+    "coverage": "npm test -- --coverage"
+  }
+}
+```
+
+Adjust targets based on project type:
+- **New project**: Start with relaxed targets, tighten over time
+- **Legacy project**: Set realistic targets based on current state
+- **Critical system**: Stricter targets (99%+ pass rate, <1% flakiness)
+
+This config is read by `/test-audit` to compare actual metrics against targets.
+
+### 8. Create Conventions Document
 
 Save to project root as `.test-conventions.md`:
 
@@ -216,7 +247,7 @@ Add test scripts to package.json/pyproject.toml/etc:
 }
 ```
 
-### 9. Confirm Output
+### 10. Confirm Output
 
 Tell the user:
 ```
@@ -231,6 +262,7 @@ Tell the user:
 📄 Configuration:
 - jest.config.js       (framework config)
 - .test-conventions.md (team standards)
+- .test-metrics.json   (health targets for /test-audit)
 
 📝 Examples:
 - tests/unit/example.test.ts
@@ -239,7 +271,7 @@ Next steps:
 - Run tests: npm test
 - Add coverage: npm test -- --coverage
 - Write more tests following the examples
-- Run /test-audit to find coverage gaps
+- Run /test-audit to check quality and compare against targets
 ```
 
 ## Success Criteria
@@ -250,6 +282,7 @@ Next steps:
 - [ ] Shared fixtures/helpers location established
 - [ ] Example tests demonstrate conventions
 - [ ] `.test-conventions.md` created with team standards
+- [ ] `.test-metrics.json` created with health targets
 - [ ] Test commands added to project config
 - [ ] User can run tests successfully after setup
 
