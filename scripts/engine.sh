@@ -46,6 +46,7 @@ source "$LIB_DIR/notify.sh"
 source "$LIB_DIR/lock.sh"
 source "$LIB_DIR/validate.sh"
 source "$LIB_DIR/provider.sh"
+source "$LIB_DIR/parallel.sh"
 
 # Source mock library if MOCK_MODE is enabled (for testing)
 if [ "$MOCK_MODE" = true ] && [ -f "$LIB_DIR/mock.sh" ]; then
