@@ -13,7 +13,8 @@ check_completion() {
   local status_file=$3
 
   local iteration=$(get_state "$state_file" "iteration")
-  local target=${FIXED_ITERATIONS:-$MAX_ITERATIONS}
+  iteration=${iteration:-0}  # Default to 0 if empty
+  local target=${FIXED_ITERATIONS:-${MAX_ITERATIONS:-10}}  # Default to 10 if both empty
 
   # Check if agent requested stop
   if [ -n "$status_file" ] && [ -f "$status_file" ]; then

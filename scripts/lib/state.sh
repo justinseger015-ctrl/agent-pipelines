@@ -44,11 +44,16 @@ update_iteration() {
 
   local timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date +%Y-%m-%dT%H:%M:%S)
 
-  jq --argjson iter "$iteration" \
+  if ! jq --argjson iter "$iteration" \
      --argjson vars "$output_vars" \
      --arg ts "$timestamp" \
      '.iteration = $iter | .history += [{"iteration": $iter, "timestamp": $ts} + $vars]' \
-     "$state_file" > "$state_file.tmp" && mv "$state_file.tmp" "$state_file"
+     "$state_file" > "$state_file.tmp"; then
+    echo "Error: Failed to update iteration in state file" >&2
+    rm -f "$state_file.tmp"
+    return 1
+  fi
+  mv "$state_file.tmp" "$state_file"
 }
 
 # Update stage status (for pipelines)
@@ -97,10 +102,15 @@ mark_iteration_started() {
 
   local timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date +%Y-%m-%dT%H:%M:%S)
 
-  jq --argjson iter "$iteration" \
+  if ! jq --argjson iter "$iteration" \
      --arg ts "$timestamp" \
      '.iteration = $iter | .iteration_started = $ts | .status = "running"' \
-     "$state_file" > "$state_file.tmp" && mv "$state_file.tmp" "$state_file"
+     "$state_file" > "$state_file.tmp"; then
+    echo "Error: Failed to mark iteration started in state file" >&2
+    rm -f "$state_file.tmp"
+    return 1
+  fi
+  mv "$state_file.tmp" "$state_file"
 }
 
 # Mark iteration completed
@@ -111,10 +121,15 @@ mark_iteration_completed() {
 
   local timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date +%Y-%m-%dT%H:%M:%S)
 
-  jq --argjson iter "$iteration" \
+  if ! jq --argjson iter "$iteration" \
      --arg ts "$timestamp" \
      '.iteration_completed = $iter | .iteration_started = null' \
-     "$state_file" > "$state_file.tmp" && mv "$state_file.tmp" "$state_file"
+     "$state_file" > "$state_file.tmp"; then
+    echo "Error: Failed to mark iteration completed in state file" >&2
+    rm -f "$state_file.tmp"
+    return 1
+  fi
+  mv "$state_file.tmp" "$state_file"
 }
 
 # Mark session as failed with detailed error (v3)
@@ -158,6 +173,36 @@ get_resume_iteration() {
 
   local completed=$(jq -r '.iteration_completed // 0' "$state_file" 2>/dev/null)
   echo "$((completed + 1))"
+}
+
+# Get the stage to resume from (for multi-stage pipelines)
+# Usage: get_resume_stage "$state_file"
+# Returns: stage index to resume from (current_stage if running, or first incomplete stage)
+get_resume_stage() {
+  local state_file=$1
+
+  if [ ! -f "$state_file" ]; then
+    echo "0"
+    return 0
+  fi
+
+  local current_stage=$(jq -r '.current_stage // 0' "$state_file" 2>/dev/null)
+  echo "$current_stage"
+}
+
+# Check if a stage is complete
+# Usage: is_stage_complete "$state_file" "$stage_idx"
+# Returns: 0 if complete, 1 otherwise
+is_stage_complete() {
+  local state_file=$1
+  local stage_idx=$2
+
+  if [ ! -f "$state_file" ]; then
+    return 1
+  fi
+
+  local stage_status=$(jq -r ".stages[$stage_idx].status // \"\"" "$state_file" 2>/dev/null)
+  [ "$stage_status" = "complete" ]
 }
 
 # Reset state for resume (clears failure status, keeps history, adds resumed_at)
