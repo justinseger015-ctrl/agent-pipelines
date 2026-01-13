@@ -16,10 +16,10 @@
 #   ├── iteration-2.txt     # Response for iteration 2
 #   └── status.json         # Expected status format (for validation)
 
-# Mock mode state
+# Mock mode state (preserve exported values if set)
 MOCK_MODE=${MOCK_MODE:-false}
-MOCK_FIXTURES_DIR=""
-MOCK_ITERATION=0
+MOCK_FIXTURES_DIR="${MOCK_FIXTURES_DIR:-}"
+MOCK_ITERATION=${MOCK_ITERATION:-0}
 MOCK_DELAY=${MOCK_DELAY:-0}  # Simulated delay between iterations
 
 #-------------------------------------------------------------------------------

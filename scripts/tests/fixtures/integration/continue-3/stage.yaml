@@ -1,0 +1,8 @@
+name: test-continue
+description: Test stage that continues for all iterations
+
+termination:
+  type: fixed
+  iterations: 3
+
+delay: 0

@@ -1,0 +1,7 @@
+{
+  "decision": "continue",
+  "reason": "Pipeline complete",
+  "summary": "Completed elegance review",
+  "work": {"items_completed": ["elegance"], "files_touched": ["code.ts"]},
+  "errors": []
+}

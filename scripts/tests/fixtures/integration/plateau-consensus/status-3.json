@@ -1,0 +1,7 @@
+{
+  "decision": "stop",
+  "reason": "Confirming completion - consensus reached",
+  "summary": "Confirmed work is complete",
+  "work": {"items_completed": [], "files_touched": []},
+  "errors": []
+}

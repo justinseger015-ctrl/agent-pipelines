@@ -1,0 +1,8 @@
+name: test-elegance
+description: Elegance stage
+
+termination:
+  type: fixed
+  iterations: 2
+
+delay: 0

@@ -1,0 +1,8 @@
+# Iteration 1
+
+## Work Done
+- Started mock work
+- Made progress on task
+
+## Status
+Written to status.json with decision: continue

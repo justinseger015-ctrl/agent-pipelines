@@ -1,0 +1,16 @@
+name: test-multi-stage
+description: Test 3-stage pipeline
+
+defaults:
+  model: opus
+
+stages:
+  - name: plan
+    loop: test-plan
+    runs: 2
+  - name: refine
+    loop: test-refine
+    runs: 2
+  - name: elegance
+    loop: test-elegance
+    runs: 2

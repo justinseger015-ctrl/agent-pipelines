@@ -1,0 +1,7 @@
+{
+  "decision": "stop",
+  "reason": "Work appears complete - first vote",
+  "summary": "Minor polish, work looks ready",
+  "work": {"items_completed": [], "files_touched": ["plan.md"]},
+  "errors": []
+}

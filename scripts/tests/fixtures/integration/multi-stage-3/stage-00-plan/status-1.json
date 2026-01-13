@@ -1,0 +1,7 @@
+{
+  "decision": "continue",
+  "reason": "More planning needed",
+  "summary": "Created initial plan",
+  "work": {"items_completed": [], "files_touched": ["plan.md"]},
+  "errors": []
+}

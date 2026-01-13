@@ -1,0 +1,7 @@
+{
+  "decision": "continue",
+  "reason": "Stage complete",
+  "summary": "Completed refinement",
+  "work": {"items_completed": ["refine"], "files_touched": ["code.ts"]},
+  "errors": []
+}

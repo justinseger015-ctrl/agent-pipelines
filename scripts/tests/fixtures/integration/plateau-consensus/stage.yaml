@@ -1,0 +1,9 @@
+name: test-plateau
+description: Test stage with plateau termination
+
+termination:
+  type: judgment
+  min_iterations: 1
+  consensus: 2
+
+delay: 0

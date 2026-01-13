@@ -1,0 +1,7 @@
+{
+  "decision": "continue",
+  "reason": "Stage complete",
+  "summary": "Refined plan",
+  "work": {"items_completed": ["plan"], "files_touched": ["plan.md"]},
+  "errors": []
+}

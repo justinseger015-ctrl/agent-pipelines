@@ -1,0 +1,8 @@
+name: test-stop-early
+description: Test stage that stops at iteration 2
+
+termination:
+  type: fixed
+  iterations: 5
+
+delay: 0

@@ -1,0 +1,8 @@
+name: test-crash
+description: Test stage that crashes at iteration 2
+
+termination:
+  type: fixed
+  iterations: 5
+
+delay: 0

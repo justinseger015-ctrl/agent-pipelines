@@ -149,6 +149,13 @@ execute_agent() {
       echo "$response" > "$output_file"
     fi
     echo "$response"
+
+    # Write mock status file if path is provided
+    # MOCK_STATUS_FILE should be set by the engine before calling execute_agent
+    if [ -n "$MOCK_STATUS_FILE" ] && type write_mock_status &>/dev/null; then
+      write_mock_status "$MOCK_STATUS_FILE" "$iteration"
+    fi
+
     return 0
   fi
 

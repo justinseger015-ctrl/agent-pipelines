@@ -1,0 +1,8 @@
+# Iteration 3
+
+## Work Done
+- Finished mock work
+- Final progress
+
+## Status
+Written to status.json with decision: continue (max reached)

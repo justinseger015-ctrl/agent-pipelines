@@ -1,0 +1,8 @@
+# Iteration 1
+
+## Work Done
+- Started work
+- Found issues to address
+
+## Status
+Written to status.json with decision: continue

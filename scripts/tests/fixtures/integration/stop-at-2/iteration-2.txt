@@ -1,0 +1,8 @@
+# Iteration 2
+
+## Work Done
+- Completed all work
+- No more improvements needed
+
+## Status
+Written to status.json with decision: stop

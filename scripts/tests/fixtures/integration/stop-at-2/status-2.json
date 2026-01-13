@@ -1,0 +1,7 @@
+{
+  "decision": "stop",
+  "reason": "All work complete",
+  "summary": "Completed all work, no more improvements needed",
+  "work": {"items_completed": ["task-1"], "files_touched": ["test.txt"]},
+  "errors": []
+}

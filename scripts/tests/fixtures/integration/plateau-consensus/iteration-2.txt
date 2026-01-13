@@ -1,0 +1,7 @@
+# Iteration 2
+
+## Analysis
+Work looks complete. First stop vote.
+
+## Status
+Written to status.json with decision: stop

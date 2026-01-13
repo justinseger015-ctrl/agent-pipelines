@@ -47,6 +47,11 @@ source "$LIB_DIR/lock.sh"
 source "$LIB_DIR/validate.sh"
 source "$LIB_DIR/provider.sh"
 
+# Source mock library if MOCK_MODE is enabled (for testing)
+if [ "$MOCK_MODE" = true ] && [ -f "$LIB_DIR/mock.sh" ]; then
+  source "$LIB_DIR/mock.sh"
+fi
+
 # Export for hooks
 export CLAUDE_PIPELINE_AGENT=1
 
@@ -234,6 +239,10 @@ run_stage() {
 
     # Resolve prompt
     local resolved_prompt=$(resolve_prompt "$STAGE_PROMPT" "$vars_json")
+
+    # Export status file path for mock mode (mock.sh needs to know where to write status)
+    export MOCK_STATUS_FILE="$(dirname "$context_file")/status.json"
+    export MOCK_ITERATION="$i"
 
     # Execute agent
     set +e
@@ -499,6 +508,10 @@ run_pipeline() {
       # Track iteration start in state
       mark_iteration_started "$state_file" "$iteration"
 
+      # Export status file path for mock mode (mock.sh needs to know where to write status)
+      export MOCK_STATUS_FILE="$status_file"
+      export MOCK_ITERATION="$iteration"
+
       # Execute agent
       set +e
       local output=$(execute_agent "$stage_provider" "$resolved_prompt" "$stage_model" "$output_file")
@@ -556,7 +569,8 @@ run_pipeline() {
         fi
       fi
 
-      [ "$run_idx" -lt "$((stage_runs - 1))" ] && sleep 2
+      # Skip delay between runs in mock mode for faster testing
+      [ "$run_idx" -lt "$((stage_runs - 1))" ] && [ "$MOCK_MODE" != "true" ] && sleep 2
     done
 
     # Bug 3 fix: Validate that at least one iteration ran

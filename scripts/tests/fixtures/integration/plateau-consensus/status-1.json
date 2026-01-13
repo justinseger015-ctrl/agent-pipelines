@@ -1,0 +1,7 @@
+{
+  "decision": "continue",
+  "reason": "Found improvements to make",
+  "summary": "Made initial improvements",
+  "work": {"items_completed": [], "files_touched": ["plan.md"]},
+  "errors": []
+}

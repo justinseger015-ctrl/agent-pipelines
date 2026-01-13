@@ -1,0 +1,7 @@
+{
+  "decision": "continue",
+  "reason": "More work to do",
+  "summary": "Continued mock work iteration 2",
+  "work": {"items_completed": [], "files_touched": ["mock-file.txt"]},
+  "errors": []
+}

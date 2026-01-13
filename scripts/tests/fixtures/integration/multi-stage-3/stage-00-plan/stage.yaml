@@ -1,0 +1,8 @@
+name: test-plan
+description: Planning stage
+
+termination:
+  type: fixed
+  iterations: 2
+
+delay: 0
