@@ -3,7 +3,7 @@
 
 name: ideate
 description: Generate and synthesize ideas from multiple angles
-version: 1
+version: 2
 
 defaults:
   provider: claude-code
@@ -15,7 +15,7 @@ stages:
     description: Deeply understand the context and constraints
     runs: 1
     prompt: |
-      Ideation session: ${SESSION}
+      Ideation session: ${SESSION_NAME}
 
       First, understand the problem space:
       - What are we trying to improve or create?
@@ -27,11 +27,21 @@ stages:
 
       Write your understanding to: ${OUTPUT}
 
+      When complete, write status.json:
+      ```bash
+      cat > ${STATUS} << 'STATUSEOF'
+      {"decision": "stop", "reason": "Understanding complete", "summary": "Analyzed problem space and constraints"}
+      STATUSEOF
+      ```
+
   # Stage 2: Generate ideas from multiple perspectives
+  # Note: parallel execution not yet implemented - runs sequentially
   - name: brainstorm
     description: Generate ideas from different angles
     runs: 5
-    parallel: true
+    inputs:
+      from: understand
+      select: latest
     perspectives:
       - user experience and delight
       - technical elegance and simplicity
@@ -39,12 +49,16 @@ stages:
       - maintainability and extensibility
       - novel/unconventional approaches
     prompt: |
-      Ideation perspective: ${PERSPECTIVE}
+      Ideation perspective #${ITERATION}
 
-      Context:
-      ${INPUTS.understand}
+      Read the context:
+      ```bash
+      jq -r '.inputs.from_stage["understand"][]' ${CTX} 2>/dev/null | while read file; do
+        cat "$file"
+      done
+      ```
 
-      Generate 3-5 ideas from the lens of: ${PERSPECTIVE}
+      Generate 3-5 ideas from your unique perspective.
 
       For each idea:
       - Name: catchy title
@@ -57,14 +71,31 @@ stages:
 
       Write to: ${OUTPUT}
 
+      When complete, write status.json:
+      ```bash
+      cat > ${STATUS} << 'STATUSEOF'
+      {"decision": "continue", "reason": "Ideas generated", "summary": "Generated N ideas from perspective ${ITERATION}"}
+      STATUSEOF
+      ```
+
   # Stage 3: Synthesize and rank
   - name: synthesize
     description: Combine, dedupe, and rank all ideas
     runs: 1
     model: opus
+    inputs:
+      from: brainstorm
+      select: all
     prompt: |
       You have ideas from 5 different perspectives:
-      ${INPUTS.brainstorm}
+
+      ```bash
+      jq -r '.inputs.from_stage["brainstorm"][]' ${CTX} 2>/dev/null | while read file; do
+        echo "=== Ideas: $file ==="
+        cat "$file"
+        echo ""
+      done
+      ```
 
       Synthesize these into a ranked list:
 
@@ -91,3 +122,10 @@ stages:
       - Combining X + Y could...
 
       Write to: ${OUTPUT}
+
+      When complete, write status.json:
+      ```bash
+      cat > ${STATUS} << 'STATUSEOF'
+      {"decision": "stop", "reason": "Synthesis complete", "summary": "Ranked and prioritized all ideas"}
+      STATUSEOF
+      ```

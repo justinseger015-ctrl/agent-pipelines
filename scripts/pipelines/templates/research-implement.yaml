@@ -3,7 +3,7 @@
 
 name: research-implement
 description: Research, plan, and implement a feature or change
-version: 1
+version: 2
 
 defaults:
   provider: claude-code
@@ -16,7 +16,7 @@ stages:
     runs: 1
     model: opus
     prompt: |
-      Research phase for: ${SESSION}
+      Research phase for: ${SESSION_NAME}
 
       Your goal is to deeply understand:
       1. The existing codebase architecture
@@ -40,14 +40,29 @@ stages:
       ## Constraints & Considerations
       ## Reference Implementations
 
+      When complete, write status.json:
+      ```bash
+      cat > ${STATUS} << 'STATUSEOF'
+      {"decision": "stop", "reason": "Research complete", "summary": "..."}
+      STATUSEOF
+      ```
+
   # Stage 2: Create implementation plan
   - name: plan
     description: Create a detailed implementation plan
     runs: 1
     model: opus
+    inputs:
+      from: research
+      select: latest
     prompt: |
-      Based on this research:
-      ${INPUTS.research}
+      Read the research from the previous stage:
+      ```bash
+      jq -r '.inputs.from_stage["research"][]' ${CTX} 2>/dev/null | while read file; do
+        echo "=== Research: $file ==="
+        cat "$file"
+      done
+      ```
 
       Create a detailed implementation plan.
 
@@ -80,17 +95,37 @@ stages:
 
       Write to: ${OUTPUT}
 
+      When complete, write status.json:
+      ```bash
+      cat > ${STATUS} << 'STATUSEOF'
+      {"decision": "stop", "reason": "Plan created", "summary": "..."}
+      STATUSEOF
+      ```
+
   # Stage 3: Refine the plan
   - name: refine-plan
     description: Iteratively improve the plan
     runs: 5
-    completion: plateau
+    termination:
+      type: judgment
+      consensus: 2
+      min_iterations: 2
+    inputs:
+      from: plan
+      select: latest
     prompt: |
-      Review and improve this implementation plan:
-      ${INPUTS.plan}
+      Read the implementation plan from the previous stage:
+      ```bash
+      jq -r '.inputs.from_stage["plan"][]' ${CTX} 2>/dev/null | while read file; do
+        echo "=== Plan: $file ==="
+        cat "$file"
+      done
+      ```
 
       Previous refinements:
-      ${PROGRESS}
+      ```bash
+      cat ${PROGRESS}
+      ```
 
       Look for:
       - Missing steps or dependencies
@@ -102,21 +137,41 @@ stages:
       Make improvements directly to the plan.
       Update ${PROGRESS} with what you changed.
 
-      PLATEAU: true (if plan is solid and actionable)
-      PLATEAU: false (if significant gaps remain)
-      REASONING: [why]
+      When done, write status.json:
+      ```bash
+      cat > ${STATUS} << 'STATUSEOF'
+      {"decision": "continue", "reason": "Still refining", "summary": "..."}
+      STATUSEOF
+      ```
+      Or if the plan is solid and actionable:
+      ```bash
+      cat > ${STATUS} << 'STATUSEOF'
+      {"decision": "stop", "reason": "Plan is complete", "summary": "..."}
+      STATUSEOF
+      ```
 
   # Stage 4: Implement
   - name: implement
     description: Execute the plan task by task
     runs: 20
-    completion: beads-empty
+    termination:
+      type: queue
+    inputs:
+      from: refine-plan
+      select: latest
     prompt: |
-      Implementation plan:
-      ${INPUTS.plan}
+      Read the implementation plan:
+      ```bash
+      jq -r '.inputs.from_stage["refine-plan"][]' ${CTX} 2>/dev/null | while read file; do
+        echo "=== Plan: $file ==="
+        cat "$file"
+      done
+      ```
 
       Your progress so far:
-      ${PROGRESS}
+      ```bash
+      cat ${PROGRESS}
+      ```
 
       Pick the next uncompleted task from the plan and implement it:
       1. Read relevant code
@@ -130,3 +185,16 @@ stages:
       - Record any learnings
 
       Write to: ${OUTPUT}
+
+      When done, write status.json:
+      ```bash
+      cat > ${STATUS} << 'STATUSEOF'
+      {"decision": "continue", "reason": "More tasks remain", "summary": "Completed task X"}
+      STATUSEOF
+      ```
+      Or if all tasks are complete:
+      ```bash
+      cat > ${STATUS} << 'STATUSEOF'
+      {"decision": "stop", "reason": "All tasks complete", "summary": "Implementation finished"}
+      STATUSEOF
+      ```
