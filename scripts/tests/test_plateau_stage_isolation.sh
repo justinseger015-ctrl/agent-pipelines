@@ -118,7 +118,8 @@ test_plateau_triggers_for_same_stage() {
   local state_file="$test_dir/state.json"
   local status_file="$test_dir/status.json"
 
-  # State with current stage (refine-beads) having 1 stop in history
+  # REALISTIC STATE: At iteration 2 for refine-beads, history includes current iteration
+  # This matches engine flow: update_iteration is called BEFORE check_completion
   cat > "$state_file" << 'EOF'
 {
   "session": "test-session",
@@ -126,7 +127,7 @@ test_plateau_triggers_for_same_stage() {
   "status": "running",
   "current_stage": 1,
   "iteration": 2,
-  "iteration_completed": 1,
+  "iteration_completed": 2,
   "stages": [
     {"index": 0, "name": "improve-plan", "status": "complete"},
     {"index": 1, "name": "refine-beads", "status": "running"}
@@ -134,18 +135,19 @@ test_plateau_triggers_for_same_stage() {
   "history": [
     {"iteration": 1, "stage": "improve-plan", "decision": "continue"},
     {"iteration": 2, "stage": "improve-plan", "decision": "stop"},
-    {"iteration": 1, "stage": "refine-beads", "decision": "stop"}
+    {"iteration": 1, "stage": "refine-beads", "decision": "stop"},
+    {"iteration": 2, "stage": "refine-beads", "decision": "stop"}
   ]
 }
 EOF
 
-  # Current iteration also says stop
+  # Status file has current iteration's decision (same as last history entry for this stage)
   echo '{"decision": "stop", "reason": "All beads refined"}' > "$status_file"
 
   export MIN_ITERATIONS=1
   export CONSENSUS=2
 
-  # Should complete: 2 consecutive stops for refine-beads
+  # Should complete: 2 consecutive stops for refine-beads in history (iterations 1 and 2)
   check_completion "test" "$state_file" "$status_file" >/dev/null 2>&1
   local result=$?
 
@@ -164,6 +166,8 @@ test_plateau_handles_interleaved_stages() {
   local state_file="$test_dir/state.json"
   local status_file="$test_dir/status.json"
 
+  # REALISTIC STATE: At iteration 3 for stage-b, history includes current iteration
+  # This matches engine flow: update_iteration is called BEFORE check_completion
   # Interleaved history (unlikely but possible edge case)
   cat > "$state_file" << 'EOF'
 {
@@ -172,7 +176,7 @@ test_plateau_handles_interleaved_stages() {
   "status": "running",
   "current_stage": 1,
   "iteration": 3,
-  "iteration_completed": 2,
+  "iteration_completed": 3,
   "stages": [
     {"index": 0, "name": "stage-a", "status": "complete"},
     {"index": 1, "name": "stage-b", "status": "running"}
@@ -181,18 +185,19 @@ test_plateau_handles_interleaved_stages() {
     {"iteration": 1, "stage": "stage-a", "decision": "stop"},
     {"iteration": 1, "stage": "stage-b", "decision": "continue"},
     {"iteration": 2, "stage": "stage-a", "decision": "stop"},
-    {"iteration": 2, "stage": "stage-b", "decision": "stop"}
+    {"iteration": 2, "stage": "stage-b", "decision": "stop"},
+    {"iteration": 3, "stage": "stage-b", "decision": "stop"}
   ]
 }
 EOF
 
-  # Current says stop
+  # Status file has current iteration's decision (same as last history entry for stage-b)
   echo '{"decision": "stop", "reason": "Done"}' > "$status_file"
 
   export MIN_ITERATIONS=1
   export CONSENSUS=2
 
-  # Should complete: stage-b has stop at iter 2 + current stop = 2 consecutive
+  # Should complete: stage-b has 2 consecutive stops in history (iterations 2 and 3)
   check_completion "test" "$state_file" "$status_file" >/dev/null 2>&1
   local result=$?
 
@@ -211,27 +216,31 @@ test_plateau_works_for_single_stage_loops() {
   local state_file="$test_dir/state.json"
   local status_file="$test_dir/status.json"
 
-  # Single-stage loop: no stages array, no stage in history
+  # REALISTIC STATE: At iteration 3, history includes ALL iterations (1-3)
+  # This matches engine flow: update_iteration is called BEFORE check_completion
+  # Single-stage loop: no stages array, empty stage field in history
   cat > "$state_file" << 'EOF'
 {
   "session": "test-session",
   "type": "loop",
   "status": "running",
   "iteration": 3,
-  "iteration_completed": 2,
+  "iteration_completed": 3,
   "history": [
     {"iteration": 1, "stage": "", "decision": "continue"},
-    {"iteration": 2, "stage": "", "decision": "stop"}
+    {"iteration": 2, "stage": "", "decision": "stop"},
+    {"iteration": 3, "stage": "", "decision": "stop"}
   ]
 }
 EOF
 
+  # Status file has current iteration's decision (same as history[2])
   echo '{"decision": "stop", "reason": "Done"}' > "$status_file"
 
   export MIN_ITERATIONS=2
   export CONSENSUS=2
 
-  # Should complete: 2 consecutive stops (stage filtering should be skipped)
+  # Should complete: 2 consecutive stops in history (iterations 2 and 3)
   check_completion "test" "$state_file" "$status_file" >/dev/null 2>&1
   local result=$?
 

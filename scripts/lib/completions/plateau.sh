@@ -32,10 +32,13 @@ check_completion() {
     local current_stage_name=$(jq -r ".stages[$current_stage_idx].name // \"\"" "$state_file" 2>/dev/null)
 
     # Count consecutive "stop" decisions from history (filtered by current stage)
+    # NOTE: History already includes the current iteration's decision (added by
+    # update_iteration before check_completion is called), so we count from
+    # history only - no separate count for status_file to avoid double-counting
     local history=$(get_history "$state_file")
-    local consecutive=1
+    local consecutive=0
 
-    # Check previous iterations for consecutive stops (same stage only)
+    # Check iterations for consecutive stops (same stage only), starting from most recent
     local history_len=$(echo "$history" | jq 'length')
     for ((i = history_len - 1; i >= 0 && consecutive < consensus_needed; i--)); do
       local entry_stage=$(echo "$history" | jq -r ".[$i].stage // \"\"")

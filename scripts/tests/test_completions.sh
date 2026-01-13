@@ -17,16 +17,18 @@ test_plateau_reads_from_status_file() {
   local state_file="$test_dir/state.json"
   local status_file="$test_dir/status.json"
 
-  # Initialize state at iteration 3 (past min_iterations)
-  echo '{"iteration": 3, "history": [{"decision": "continue"}, {"decision": "stop"}]}' > "$state_file"
+  # REALISTIC STATE: At iteration 3, history includes ALL iterations (1-3)
+  # This matches engine flow: update_iteration is called BEFORE check_completion
+  # Pattern: continue, stop, stop = 2 consecutive stops
+  echo '{"iteration": 3, "history": [{"decision": "continue"}, {"decision": "stop"}, {"decision": "stop"}]}' > "$state_file"
 
-  # Status file says stop
+  # Status file has current iteration's decision (same as history[2])
   echo '{"decision": "stop", "reason": "No more improvements"}' > "$status_file"
 
   export MIN_ITERATIONS=2
   export CONSENSUS=2
 
-  # Should complete because: current=stop + previous=stop = 2 consecutive stops
+  # Should complete: 2 consecutive stops in history (iterations 2 and 3)
   check_completion "test" "$state_file" "$status_file" >/dev/null 2>&1
   local result=$?
 
@@ -88,13 +90,18 @@ test_plateau_requires_consensus() {
   local state_file="$test_dir/state.json"
   local status_file="$test_dir/status.json"
 
-  # Only one stop in history, current is stop
-  echo '{"iteration": 3, "history": [{"decision": "continue"}, {"decision": "continue"}]}' > "$state_file"
+  # REALISTIC STATE: At iteration 3, history includes current iteration
+  # This matches engine flow: update_iteration is called BEFORE check_completion
+  # Pattern: continue, continue, stop = only 1 stop, need 2 consecutive for consensus
+  echo '{"iteration": 3, "history": [{"decision": "continue"}, {"decision": "continue"}, {"decision": "stop"}]}' > "$state_file"
+
+  # Status file has current iteration's decision (same as history[2])
   echo '{"decision": "stop", "reason": "Done"}' > "$status_file"
 
   export MIN_ITERATIONS=2
   export CONSENSUS=2
 
+  # Should NOT complete: only 1 stop in history, need 2 consecutive
   check_completion "test" "$state_file" "$status_file" >/dev/null 2>&1
   local result=$?
 
