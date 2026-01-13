@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="$SCRIPT_DIR/lib"
 
 # Parse global flags early
-TMUX_FLAG=""
+TMUX_FLAG="true"  # Default: run in tmux for persistent background execution
 INPUT_FILES=()
 REMAINING_ARGS=()
 skip_next=false
@@ -28,7 +28,8 @@ for i in $(seq 1 $#); do
     continue
   fi
   case "$arg" in
-    --tmux) TMUX_FLAG="true" ;;
+    --foreground|--no-tmux) TMUX_FLAG="" ;;
+    --tmux) TMUX_FLAG="true" ;;  # Explicit (redundant but clear)
     --provider=*) export PIPELINE_CLI_PROVIDER="${arg#*=}" ;;
     --model=*) export PIPELINE_CLI_MODEL="${arg#*=}" ;;
     --context=*) export PIPELINE_CLI_CONTEXT="${arg#*=}" ;;
@@ -92,7 +93,7 @@ show_help() {
   echo "  status <session>                Check session status"
   echo ""
   echo "Flags:"
-  echo "  --tmux                          Run in tmux for persistent background execution"
+  echo "  --foreground                    Run in foreground instead of tmux (default: tmux)"
   echo "  --force                         Override existing session lock"
   echo "  --resume                        Resume a crashed/failed session"
   echo "  --input <file>                  Initial input file for pipeline (can use multiple times)"
