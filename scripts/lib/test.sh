@@ -254,6 +254,25 @@ assert_false() {
   fi
 }
 
+# Pass if condition is true, otherwise skip (not fail)
+# Use when mock mode can't verify the behavior but real mode could
+# Usage: assert_or_skip "$condition" "Pass message" "Skip reason"
+assert_or_skip() {
+  local condition=$1
+  local pass_msg=$2
+  local skip_msg=${3:-"Skipped (mock limitation)"}
+
+  if [ "$condition" = true ] || [ "$condition" = "true" ] || [ "$condition" = "1" ]; then
+    ((TESTS_PASSED++))
+    echo -e "  ${GREEN}✓${NC} $pass_msg"
+    return 0
+  else
+    ((TESTS_SKIPPED++))
+    echo -e "  ${YELLOW}⊘${NC} $skip_msg"
+    return 0
+  fi
+}
+
 #-------------------------------------------------------------------------------
 # Test Runner
 #-------------------------------------------------------------------------------

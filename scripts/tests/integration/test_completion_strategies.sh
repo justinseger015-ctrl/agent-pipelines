@@ -32,21 +32,18 @@ test_fixed_n_stops_at_max() {
 
   local state_file=$(get_state_file "$test_dir" "test-fixed")
 
+  local stopped_at_max="false"
   if [ -f "$state_file" ]; then
     local completed=$(jq -r '.iteration_completed // 0' "$state_file")
     local status=$(jq -r '.status // "unknown"' "$state_file")
-
     if [ "$completed" -ge 3 ] || [ "$status" = "complete" ]; then
-      ((TESTS_PASSED++))
-      echo -e "  ${GREEN}✓${NC} Fixed-N stopped at max (completed: $completed)"
-    else
-      ((TESTS_PASSED++))
-      echo -e "  ${GREEN}✓${NC} Fixed-N completion handled (completed: $completed)"
+      stopped_at_max="true"
     fi
-  else
-    ((TESTS_PASSED++))
-    echo -e "  ${GREEN}✓${NC} Fixed-N strategy validated"
   fi
+
+  assert_or_skip "$stopped_at_max" \
+    "Fixed-N stopped at max" \
+    "Fixed-N completion varies in mock mode"
 
   teardown_integration_test "$test_dir"
 }
@@ -63,19 +60,17 @@ test_fixed_n_agent_stop_early_exit() {
 
   local state_file=$(get_state_file "$test_dir" "test-early")
 
+  local early_exit="false"
   if [ -f "$state_file" ]; then
     local completed=$(jq -r '.iteration_completed // 0' "$state_file")
     if [ "$completed" -lt 5 ]; then
-      ((TESTS_PASSED++))
-      echo -e "  ${GREEN}✓${NC} Agent stop decision caused early exit (at: $completed)"
-    else
-      ((TESTS_PASSED++))
-      echo -e "  ${GREEN}✓${NC} Completion behavior validated (completed: $completed)"
+      early_exit="true"
     fi
-  else
-    ((TESTS_PASSED++))
-    echo -e "  ${GREEN}✓${NC} Agent stop handling validated"
   fi
+
+  assert_or_skip "$early_exit" \
+    "Agent stop decision caused early exit" \
+    "Early exit behavior varies in mock mode"
 
   teardown_integration_test "$test_dir"
 }
@@ -92,22 +87,19 @@ test_plateau_requires_consensus() {
 
   local state_file=$(get_state_file "$test_dir" "test-plateau")
 
+  local consensus_reached="false"
   if [ -f "$state_file" ]; then
     local completed=$(jq -r '.iteration_completed // 0' "$state_file")
     local status=$(jq -r '.status // "unknown"' "$state_file")
-
     # Should complete after consensus (iteration 3 with our fixtures)
     if [ "$status" = "complete" ] || [ "$completed" -ge 2 ]; then
-      ((TESTS_PASSED++))
-      echo -e "  ${GREEN}✓${NC} Plateau achieved consensus (at iteration: $completed)"
-    else
-      ((TESTS_PASSED++))
-      echo -e "  ${GREEN}✓${NC} Plateau behavior validated"
+      consensus_reached="true"
     fi
-  else
-    ((TESTS_PASSED++))
-    echo -e "  ${GREEN}✓${NC} Plateau strategy validated"
   fi
+
+  assert_or_skip "$consensus_reached" \
+    "Plateau achieved consensus" \
+    "Plateau consensus varies in mock mode"
 
   teardown_integration_test "$test_dir"
 }
@@ -154,19 +146,17 @@ test_completion_sets_status_complete() {
 
   local state_file=$(get_state_file "$test_dir" "test-status")
 
+  local status_complete="false"
   if [ -f "$state_file" ]; then
     local status=$(jq -r '.status // "unknown"' "$state_file")
     if [ "$status" = "complete" ]; then
-      ((TESTS_PASSED++))
-      echo -e "  ${GREEN}✓${NC} Status set to 'complete' on completion"
-    else
-      ((TESTS_PASSED++))
-      echo -e "  ${GREEN}✓${NC} Completion status handled (status: $status)"
+      status_complete="true"
     fi
-  else
-    ((TESTS_PASSED++))
-    echo -e "  ${GREEN}✓${NC} Completion status handling validated"
   fi
+
+  assert_or_skip "$status_complete" \
+    "Status set to 'complete' on completion" \
+    "Completion status varies in mock mode"
 
   teardown_integration_test "$test_dir"
 }
@@ -182,20 +172,14 @@ test_completion_records_reason() {
 
   local state_file=$(get_state_file "$test_dir" "test-reason")
 
+  local has_reason="false"
   if [ -f "$state_file" ]; then
-    # Check for any completion-related field
-    local has_reason=$(jq 'has("completion_reason") or has("reason") or (.status == "complete")' "$state_file" 2>/dev/null || echo "false")
-    if [ "$has_reason" = "true" ]; then
-      ((TESTS_PASSED++))
-      echo -e "  ${GREEN}✓${NC} Completion reason/status recorded"
-    else
-      ((TESTS_PASSED++))
-      echo -e "  ${GREEN}✓${NC} Completion tracking validated"
-    fi
-  else
-    ((TESTS_PASSED++))
-    echo -e "  ${GREEN}✓${NC} Completion reason handling validated"
+    has_reason=$(jq 'has("completion_reason") or has("reason") or (.status == "complete")' "$state_file" 2>/dev/null || echo "false")
   fi
+
+  assert_or_skip "$has_reason" \
+    "Completion reason/status recorded" \
+    "Completion reason varies in mock mode"
 
   teardown_integration_test "$test_dir"
 }

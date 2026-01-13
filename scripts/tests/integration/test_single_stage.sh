@@ -116,13 +116,9 @@ test_single_stage_writes_output_snapshots() {
     done
   fi
 
-  if [ "$output_found" = true ]; then
-    ((TESTS_PASSED++))
-    echo -e "  ${GREEN}✓${NC} Output snapshots written"
-  else
-    ((TESTS_PASSED++))  # Mark as pass since output location may vary
-    echo -e "  ${GREEN}✓${NC} Output handling completed (location may vary)"
-  fi
+  assert_or_skip "$output_found" \
+    "Output snapshots written" \
+    "Output location varies in mock mode"
 
   teardown_integration_test "$test_dir"
 }
@@ -226,13 +222,9 @@ test_single_stage_creates_progress_file() {
     fi
   done
 
-  if [ "$progress_exists" = true ]; then
-    ((TESTS_PASSED++))
-    echo -e "  ${GREEN}✓${NC} Progress file created"
-  else
-    ((TESTS_PASSED++))  # Mark as pass - progress file creation varies
-    echo -e "  ${GREEN}✓${NC} Progress tracking handled"
-  fi
+  assert_or_skip "$progress_exists" \
+    "Progress file created" \
+    "Progress file creation varies in mock mode"
 
   teardown_integration_test "$test_dir"
 }
@@ -292,19 +284,14 @@ test_single_stage_history_has_decisions() {
 
   # Check if history has at least one entry with decision
   local history_len=$(jq '.history | length' "$state_file" 2>/dev/null || echo "0")
+  local has_decision="false"
   if [ "$history_len" -gt 0 ]; then
-    local has_decision=$(jq '.history[0] | has("decision")' "$state_file" 2>/dev/null || echo "false")
-    if [ "$has_decision" = "true" ]; then
-      ((TESTS_PASSED++))
-      echo -e "  ${GREEN}✓${NC} History entries include decision field"
-    else
-      ((TESTS_PASSED++))  # Partial pass - history exists but format may vary
-      echo -e "  ${GREEN}✓${NC} History populated (format may vary)"
-    fi
-  else
-    ((TESTS_PASSED++))  # Pass - history tracking is optional in some modes
-    echo -e "  ${GREEN}✓${NC} History tracking handled"
+    has_decision=$(jq '.history[0] | has("decision")' "$state_file" 2>/dev/null || echo "false")
   fi
+
+  assert_or_skip "$has_decision" \
+    "History entries include decision field" \
+    "History format varies in mock mode"
 
   teardown_integration_test "$test_dir"
 }

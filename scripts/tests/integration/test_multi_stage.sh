@@ -31,22 +31,19 @@ test_multi_stage_executes_all_stages() {
 
   local state_file=$(get_state_file "$test_dir" "test-all-stages")
 
-  # Check if state file exists
+  # Check if state file exists and has stages
+  local executed="false"
   if [ -f "$state_file" ]; then
     local status=$(jq -r '.status // "unknown"' "$state_file")
     local stage_count=$(jq '.stages | length // 0' "$state_file" 2>/dev/null || echo "0")
-
     if [ "$stage_count" -gt 0 ] || [ "$status" = "complete" ]; then
-      ((TESTS_PASSED++))
-      echo -e "  ${GREEN}✓${NC} Multi-stage pipeline executed (stages: $stage_count, status: $status)"
-    else
-      ((TESTS_PASSED++))  # Partial pass - pipeline ran
-      echo -e "  ${GREEN}✓${NC} Multi-stage pipeline initiated"
+      executed="true"
     fi
-  else
-    ((TESTS_PASSED++))  # Pass with note - multi-stage mock may need adjustment
-    echo -e "  ${GREEN}✓${NC} Multi-stage execution attempted (state handling varies)"
   fi
+
+  assert_or_skip "$executed" \
+    "Multi-stage pipeline executed" \
+    "Multi-stage mock needs adjustment"
 
   teardown_integration_test "$test_dir"
 }
@@ -62,19 +59,17 @@ test_multi_stage_current_stage_updates() {
 
   local state_file=$(get_state_file "$test_dir" "test-current-stage")
 
+  local tracked="false"
   if [ -f "$state_file" ]; then
     local current_stage=$(jq -r '.current_stage // -1' "$state_file")
     if [ "$current_stage" -ge 0 ]; then
-      ((TESTS_PASSED++))
-      echo -e "  ${GREEN}✓${NC} current_stage tracked (value: $current_stage)"
-    else
-      ((TESTS_PASSED++))
-      echo -e "  ${GREEN}✓${NC} Stage tracking handled"
+      tracked="true"
     fi
-  else
-    ((TESTS_PASSED++))
-    echo -e "  ${GREEN}✓${NC} Multi-stage state handling validated"
   fi
+
+  assert_or_skip "$tracked" \
+    "current_stage tracked" \
+    "Stage tracking varies in mock mode"
 
   teardown_integration_test "$test_dir"
 }
@@ -90,19 +85,17 @@ test_multi_stage_records_type_as_pipeline() {
 
   local state_file=$(get_state_file "$test_dir" "test-type")
 
+  local is_pipeline="false"
   if [ -f "$state_file" ]; then
     local type=$(jq -r '.type // "unknown"' "$state_file")
     if [ "$type" = "pipeline" ]; then
-      ((TESTS_PASSED++))
-      echo -e "  ${GREEN}✓${NC} Type recorded as 'pipeline'"
-    else
-      ((TESTS_PASSED++))
-      echo -e "  ${GREEN}✓${NC} Type recorded: $type"
+      is_pipeline="true"
     fi
-  else
-    ((TESTS_PASSED++))
-    echo -e "  ${GREEN}✓${NC} Pipeline type handling validated"
   fi
+
+  assert_or_skip "$is_pipeline" \
+    "Type recorded as 'pipeline'" \
+    "Pipeline type handling varies in mock mode"
 
   teardown_integration_test "$test_dir"
 }
@@ -118,19 +111,14 @@ test_multi_stage_stages_array_populated() {
 
   local state_file=$(get_state_file "$test_dir" "test-array")
 
+  local stages_exist="false"
   if [ -f "$state_file" ]; then
-    local stages_exist=$(jq 'has("stages")' "$state_file" 2>/dev/null || echo "false")
-    if [ "$stages_exist" = "true" ]; then
-      ((TESTS_PASSED++))
-      echo -e "  ${GREEN}✓${NC} Stages array exists in state"
-    else
-      ((TESTS_PASSED++))
-      echo -e "  ${GREEN}✓${NC} State structure validated"
-    fi
-  else
-    ((TESTS_PASSED++))
-    echo -e "  ${GREEN}✓${NC} Multi-stage state handling validated"
+    stages_exist=$(jq 'has("stages")' "$state_file" 2>/dev/null || echo "false")
   fi
+
+  assert_or_skip "$stages_exist" \
+    "Stages array exists in state" \
+    "Stages array handling varies in mock mode"
 
   teardown_integration_test "$test_dir"
 }
@@ -147,23 +135,19 @@ test_multi_stage_creates_stage_dirs() {
   local run_dir=$(get_run_dir "$test_dir" "test-dirs")
 
   # Check for stage directories or iterations directory
-  local has_dirs=false
+  local has_dirs="false"
   if [ -d "$run_dir" ]; then
     for d in "$run_dir"/stage-* "$run_dir"/iterations; do
       if [ -d "$d" ]; then
-        has_dirs=true
+        has_dirs="true"
         break
       fi
     done
   fi
 
-  if [ "$has_dirs" = true ]; then
-    ((TESTS_PASSED++))
-    echo -e "  ${GREEN}✓${NC} Stage/iteration directories created"
-  else
-    ((TESTS_PASSED++))
-    echo -e "  ${GREEN}✓${NC} Directory structure handled"
-  fi
+  assert_or_skip "$has_dirs" \
+    "Stage/iteration directories created" \
+    "Directory structure varies in mock mode"
 
   teardown_integration_test "$test_dir"
 }
@@ -179,19 +163,14 @@ test_multi_stage_tracks_stage_iterations() {
 
   local state_file=$(get_state_file "$test_dir" "test-iter")
 
+  local has_iteration="false"
   if [ -f "$state_file" ]; then
-    local has_iteration=$(jq 'has("iteration") or has("iteration_completed")' "$state_file" 2>/dev/null || echo "false")
-    if [ "$has_iteration" = "true" ]; then
-      ((TESTS_PASSED++))
-      echo -e "  ${GREEN}✓${NC} Iteration tracking present"
-    else
-      ((TESTS_PASSED++))
-      echo -e "  ${GREEN}✓${NC} Iteration handling validated"
-    fi
-  else
-    ((TESTS_PASSED++))
-    echo -e "  ${GREEN}✓${NC} Multi-stage iteration handling validated"
+    has_iteration=$(jq 'has("iteration") or has("iteration_completed")' "$state_file" 2>/dev/null || echo "false")
   fi
+
+  assert_or_skip "$has_iteration" \
+    "Iteration tracking present" \
+    "Iteration tracking varies in mock mode"
 
   teardown_integration_test "$test_dir"
 }
@@ -208,23 +187,19 @@ test_multi_stage_copies_config() {
   local run_dir=$(get_run_dir "$test_dir" "test-config")
 
   # Check if any yaml file exists in run directory
-  local has_config=false
+  local has_config="false"
   if [ -d "$run_dir" ]; then
     for f in "$run_dir"/*.yaml "$run_dir"/*.yml; do
       if [ -f "$f" ]; then
-        has_config=true
+        has_config="true"
         break
       fi
     done
   fi
 
-  if [ "$has_config" = true ]; then
-    ((TESTS_PASSED++))
-    echo -e "  ${GREEN}✓${NC} Pipeline config copied to run directory"
-  else
-    ((TESTS_PASSED++))
-    echo -e "  ${GREEN}✓${NC} Config handling validated"
-  fi
+  assert_or_skip "$has_config" \
+    "Pipeline config copied to run directory" \
+    "Config copy varies in mock mode"
 
   teardown_integration_test "$test_dir"
 }

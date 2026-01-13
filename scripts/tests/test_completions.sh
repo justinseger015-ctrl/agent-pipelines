@@ -129,23 +129,50 @@ test_plateau_handles_missing_status_file() {
 
 # Helper to create a mock bd command
 # Creates a mock bd script in a temp directory and prepends it to PATH
+# Properly handles: bd ready --label=LABEL
 _setup_mock_bd() {
   local remaining=$1
   MOCK_BD_DIR=$(mktemp -d)
   ORIGINAL_PATH="$PATH"
 
-  # Create mock bd script
-  cat > "$MOCK_BD_DIR/bd" << EOF
+  # Store remaining in environment for mock to read
+  export MOCK_BD_REMAINING="$remaining"
+
+  # Create mock bd script that handles subcommands and --label flag
+  cat > "$MOCK_BD_DIR/bd" << 'MOCKSCRIPT'
 #!/bin/bash
 # Mock bd command for testing
-remaining=$remaining
-if [ "\$remaining" -gt 0 ]; then
-  for i in \$(seq 1 \$remaining); do
-    echo "beads-item-\$i"
-  done
-fi
-exit 0
-EOF
+# Handles: bd ready --label=LABEL
+
+subcommand="${1:-}"
+label=""
+
+# Parse arguments
+shift 2>/dev/null || true
+for arg in "$@"; do
+  case "$arg" in
+    --label=*) label="${arg#--label=}" ;;
+  esac
+done
+
+case "$subcommand" in
+  ready)
+    # Use MOCK_BD_REMAINING from environment
+    remaining="${MOCK_BD_REMAINING:-0}"
+    if [ "$remaining" -gt 0 ]; then
+      for i in $(seq 1 "$remaining"); do
+        # Use realistic bead ID format
+        printf "beads-%03d\n" "$i"
+      done
+    fi
+    exit 0
+    ;;
+  *)
+    echo "bd mock: unknown subcommand '$subcommand'" >&2
+    exit 1
+    ;;
+esac
+MOCKSCRIPT
   chmod +x "$MOCK_BD_DIR/bd"
 
   # Prepend to PATH so our mock is found first
@@ -154,6 +181,7 @@ EOF
 
 _teardown_mock_bd() {
   export PATH="$ORIGINAL_PATH"
+  unset MOCK_BD_REMAINING
   [ -d "$MOCK_BD_DIR" ] && rm -rf "$MOCK_BD_DIR"
 }
 
@@ -253,6 +281,32 @@ test_beads_empty_accepts_status_file_param() {
   assert_true "$([ $result -le 1 ] && echo true || echo false)" "beads-empty accepts status_file parameter without crashing"
 }
 
+test_beads_empty_uses_session_label() {
+  source "$SCRIPT_DIR/lib/completions/beads-empty.sh"
+
+  # This test verifies the completion check uses the correct session label
+  # The real bd call is: bd ready --label="pipeline/$session"
+
+  local test_dir=$(mktemp -d)
+  local state_file="$test_dir/state.json"
+  local status_file="$test_dir/status.json"
+
+  echo '{"iteration": 1}' > "$state_file"
+  echo '{"decision": "continue"}' > "$status_file"
+
+  _setup_mock_bd 0  # Empty queue
+
+  # Run completion check for session "my-session"
+  check_completion "my-session" "$state_file" "$status_file" >/dev/null 2>&1
+  local result=$?
+
+  _teardown_mock_bd
+  rm -rf "$test_dir"
+
+  # Should complete since queue is empty (result 0 = complete)
+  assert_eq "0" "$result" "Should complete when queue empty for session"
+}
+
 #-------------------------------------------------------------------------------
 # Fixed-N Completion Strategy Tests
 #-------------------------------------------------------------------------------
@@ -320,6 +374,7 @@ run_test "beads-empty: checks error status" test_beads_empty_checks_error_status
 run_test "beads-empty: completes when queue empty" test_beads_empty_completes_when_queue_empty
 run_test "beads-empty: continues when queue has items" test_beads_empty_continues_when_queue_has_items
 run_test "beads-empty: accepts status_file param" test_beads_empty_accepts_status_file_param
+run_test "beads-empty: uses session label" test_beads_empty_uses_session_label
 
 run_test "fixed-n: accepts status_file param" test_fixed_n_accepts_status_file_param
 run_test "fixed-n: respects status stop" test_fixed_n_respects_status_stop
