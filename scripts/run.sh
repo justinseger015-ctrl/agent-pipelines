@@ -31,6 +31,7 @@ for i in $(seq 1 $#); do
     --tmux) TMUX_FLAG="true" ;;
     --provider=*) export PIPELINE_CLI_PROVIDER="${arg#*=}" ;;
     --model=*) export PIPELINE_CLI_MODEL="${arg#*=}" ;;
+    --context=*) export PIPELINE_CLI_CONTEXT="${arg#*=}" ;;
     --input)
       next_i=$((i + 1))
       INPUT_FILES+=("${!next_i}")
@@ -97,6 +98,7 @@ show_help() {
   echo "  --input <file>                  Initial input file for pipeline (can use multiple times)"
   echo "  --provider=<name>               Override provider (claude, codex)"
   echo "  --model=<name>                  Override model (opus, o3, etc.)"
+  echo "  --context=<text>                Inject context into prompt via \${CONTEXT}"
   echo "  --verbose                       Show detailed test output"
   echo ""
   echo "Available stages:"

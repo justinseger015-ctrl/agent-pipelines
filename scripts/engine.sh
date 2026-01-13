@@ -113,7 +113,7 @@ load_stage() {
   STAGE_PROMPT_VALUE=$(json_get "$STAGE_CONFIG" ".prompt" "")
   STAGE_OUTPUT_PATH=$(json_get "$STAGE_CONFIG" ".output_path" "")
   STAGE_PROVIDER=${PIPELINE_CLI_PROVIDER:-${CLAUDE_PIPELINE_PROVIDER:-$(json_get "$STAGE_CONFIG" ".provider" "claude")}}
-  STAGE_CONTEXT=$(json_get "$STAGE_CONFIG" ".context" "")
+  STAGE_CONTEXT=${PIPELINE_CLI_CONTEXT:-${CLAUDE_PIPELINE_CONTEXT:-$(json_get "$STAGE_CONFIG" ".context" "")}}
 
   # Export for completion strategies
   export MIN_ITERATIONS="$STAGE_MIN_ITERATIONS"
@@ -504,8 +504,8 @@ run_pipeline() {
     # v3: Get inputs configuration
     local stage_inputs_from=$(json_get "$pipeline_json" ".stages[$stage_idx].inputs.from" "")
     local stage_inputs_select=$(json_get "$pipeline_json" ".stages[$stage_idx].inputs.select" "latest")
-    # v4: Get context injection (overridable per stage)
-    local stage_context=$(json_get "$pipeline_json" ".stages[$stage_idx].context" "")
+    # v4: Get context injection (CLI > pipeline stage > stage.yaml)
+    local stage_context=${PIPELINE_CLI_CONTEXT:-$(json_get "$pipeline_json" ".stages[$stage_idx].context" "")}
 
     # Create stage output directory (v3 format: stage-00-name)
     local stage_dir="$run_dir/stage-$(printf '%02d' $stage_idx)-$stage_name"
