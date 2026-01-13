@@ -66,7 +66,7 @@ Step 3: VALIDATE & CONFIRM
 OUTPUT: Confirmed architecture spec
 ```
 
-**CRITICAL:** Cannot proceed to confirmation without spawning the `pipeline-architect` subagent. Defined at `.claude/agents/pipeline-architect.md`.
+**CRITICAL:** Cannot proceed to confirmation without spawning the `pipeline-architect` subagent. Defined in `agents/pipeline-architect.md`.
 
 ## Understanding Phase
 
@@ -132,7 +132,7 @@ cat scripts/lib/status.sh   # Status validation
 
 ## Subagents
 
-This skill uses the `pipeline-architect` subagent defined at `.claude/agents/pipeline-architect.md`.
+This skill uses the `pipeline-architect` subagent defined in `agents/pipeline-architect.md`.
 
 Invoke via Task tool:
 ```

@@ -13,6 +13,18 @@ Run `bd prime` for workflow context, or install hooks (`bd hooks install`) for a
 
 For full workflow details: `bd prime`
 
+## Specialized Agents
+
+Agents live in `agents/` at the plugin root (per Claude Code plugin structure):
+
+| Agent | Purpose |
+|-------|---------|
+| **pipeline-architect** | Design pipeline architectures, termination strategies, I/O flow, and parallel blocks. |
+| **stage-creator** | Create stage.yaml and prompt.md files for new stages. |
+| **pipeline-assembler** | Assemble multi-stage pipeline configurations. |
+
+Invoke via Task tool: `subagent_type: "pipeline-architect"` with requirements summary.
+
 ## Project Structure & Module Organization
 
 The automation engine lives in `scripts/`: `run.sh` is the CLI entry point, `engine.sh` drives each iteration, and `lib/` holds reusable YAML/state helpers. Stage prompts plus stop criteria live in `scripts/stages/<stage>/{stage.yaml,prompt.md}`, while composed flows sit in `scripts/pipelines/*.yaml` with human-facing cues in `commands/`. Agent briefs live in `agents/`, durable references in `docs/`, reusable prompt snippets in `skills/`, and every regression fixture or shell suite belongs in `scripts/tests/` beside the logic it protects.
