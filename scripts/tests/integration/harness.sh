@@ -153,6 +153,22 @@ run_mock_pipeline() {
   return $?
 }
 
+# Run multi-stage pipeline with resume flag
+# Usage: run_mock_pipeline_resume "$test_dir" "$pipeline_file" "$session"
+run_mock_pipeline_resume() {
+  local test_dir=$1
+  local pipeline_file=$2
+  local session=$3
+
+  export MOCK_MODE=true
+
+  (
+    cd "$test_dir"
+    "$ENGINE_SCRIPT" pipeline "$pipeline_file" "$session" --resume 2>&1
+  )
+  return $?
+}
+
 # Run engine with resume flag
 # Usage: run_mock_engine_resume "$test_dir" "$session" "$max_iterations" ["$stage_type"]
 run_mock_engine_resume() {

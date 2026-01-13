@@ -205,12 +205,21 @@ test_resume_no_prior_state() {
   setup_integration_test "$test_dir" "continue-3"
 
   # Try to resume non-existent session
-  local result
-  result=$(run_mock_engine_resume "$test_dir" "nonexistent-session" 3 "test-continue-3" 2>&1) || true
+  local result exit_code
+  result=$(run_mock_engine_resume "$test_dir" "nonexistent-session" 3 "test-continue-3" 2>&1)
+  exit_code=$?
 
-  # Should either fail gracefully or start fresh - both acceptable
-  ((TESTS_PASSED++))
-  echo -e "  ${GREEN}✓${NC} Resume without prior state handled (no crash)"
+  # Engine should fail with clear error about no previous session
+  local handled="false"
+  if [ "$exit_code" -ne 0 ]; then
+    if [[ "$result" == *"no previous session"* ]] || [[ "$result" == *"Cannot resume"* ]]; then
+      handled="true"
+    fi
+  fi
+
+  assert_or_skip "$handled" \
+    "Resume without prior state failed with clear error" \
+    "Resume error handling varies in mock mode"
 
   teardown_integration_test "$test_dir"
 }

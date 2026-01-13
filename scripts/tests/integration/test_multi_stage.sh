@@ -219,8 +219,8 @@ test_multi_stage_session_consistency() {
   if [ -f "$state_file" ]; then
     assert_json_field "$state_file" ".session" "$session" "Session name should be consistent"
   else
-    ((TESTS_PASSED++))
-    echo -e "  ${GREEN}✓${NC} Session consistency validated"
+    ((TESTS_SKIPPED++))
+    echo -e "  ${YELLOW}⊘${NC} State file not created (mock mode limitation)"
   fi
 
   teardown_integration_test "$test_dir"
@@ -240,8 +240,8 @@ test_multi_stage_records_started_at() {
   if [ -f "$state_file" ]; then
     assert_json_field_exists "$state_file" ".started_at" "started_at should exist"
   else
-    ((TESTS_PASSED++))
-    echo -e "  ${GREEN}✓${NC} Timestamp handling validated"
+    ((TESTS_SKIPPED++))
+    echo -e "  ${YELLOW}⊘${NC} State file not created (mock mode limitation)"
   fi
 
   teardown_integration_test "$test_dir"
@@ -264,13 +264,22 @@ stages:
     runs: 2
 EOF
 
-  # This should fail or handle gracefully
-  local result
-  result=$(run_mock_pipeline "$test_dir" "$test_dir/.claude/pipelines/broken.yaml" "test-missing" 2>&1) || true
+  # This should fail with clear error
+  local result exit_code
+  result=$(run_mock_pipeline "$test_dir" "$test_dir/.claude/pipelines/broken.yaml" "test-missing" 2>&1)
+  exit_code=$?
 
-  # Either it fails explicitly or handles gracefully - both are acceptable
-  ((TESTS_PASSED++))
-  echo -e "  ${GREEN}✓${NC} Missing stage handled (no crash)"
+  # Engine should fail with error about missing stage
+  local handled="false"
+  if [ "$exit_code" -ne 0 ]; then
+    if [[ "$result" == *"not found"* ]] || [[ "$result" == *"Loop type"* ]] || [[ "$result" == *"stage"* ]]; then
+      handled="true"
+    fi
+  fi
+
+  assert_or_skip "$handled" \
+    "Missing stage detected with clear error" \
+    "Missing stage handling varies in mock mode"
 
   teardown_integration_test "$test_dir"
 }

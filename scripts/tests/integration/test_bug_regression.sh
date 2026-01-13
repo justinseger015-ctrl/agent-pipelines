@@ -194,8 +194,8 @@ test_bug4_state_updates_during_execution() {
       ((TESTS_PASSED++))
       echo -e "  ${GREEN}✓${NC} History array populated: $history_len entries"
     else
-      ((TESTS_PASSED++))  # History population varies by implementation
-      echo -e "  ${GREEN}✓${NC} History handling validated"
+      ((TESTS_SKIPPED++))
+      echo -e "  ${YELLOW}⊘${NC} History array empty (mock mode limitation)"
     fi
   else
     ((TESTS_FAILED++))
@@ -243,9 +243,9 @@ test_bug5_resume_respects_current_stage() {
 }
 EOF
 
-  # Resume the pipeline
+  # Resume the pipeline (must use --resume to trigger resume logic)
   local output
-  output=$(run_mock_pipeline "$test_dir" "$test_dir/.claude/pipelines/pipeline.yaml" "$session" 2>&1) || true
+  output=$(run_mock_pipeline_resume "$test_dir" "$test_dir/.claude/pipelines/pipeline.yaml" "$session" 2>&1) || true
 
   # Should NOT contain "Loop 1/3: plan" which would indicate restart from stage 0
   local restarted_from_zero=false
@@ -266,8 +266,8 @@ EOF
     ((TESTS_PASSED++))
     echo -e "  ${GREEN}✓${NC} Resume did not restart from stage 0 (Bug 5 regression)"
   else
-    ((TESTS_PASSED++))  # May pass in mock mode due to different flow
-    echo -e "  ${GREEN}✓${NC} Resume behavior validated"
+    ((TESTS_FAILED++))
+    echo -e "  ${RED}✗${NC} Bug 5 REGRESSION: Pipeline restarted from stage 0 instead of resuming"
   fi
 
   teardown_integration_test "$test_dir"
@@ -299,15 +299,8 @@ test_bug6_pipeline_records_history() {
       ((TESTS_PASSED++))
       echo -e "  ${GREEN}✓${NC} Pipeline recorded $history_len history entries (Bug 6 regression)"
     else
-      # History might be empty in mock mode - check if state exists
-      local status=$(jq -r '.status // "unknown"' "$state_file")
-      if [ "$status" != "unknown" ]; then
-        ((TESTS_PASSED++))
-        echo -e "  ${GREEN}✓${NC} Pipeline state tracked (history may vary in mock mode)"
-      else
-        ((TESTS_FAILED++))
-        echo -e "  ${RED}✗${NC} History array empty (Bug 6 regression failed)"
-      fi
+      ((TESTS_SKIPPED++))
+      echo -e "  ${YELLOW}⊘${NC} History array empty (mock mode limitation - verify manually)"
     fi
   else
     ((TESTS_FAILED++))
