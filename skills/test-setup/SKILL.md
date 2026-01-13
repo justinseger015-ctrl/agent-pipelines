@@ -183,12 +183,24 @@ Save to project root as `.test-metrics.json`:
     "skipped_tests_percent": { "healthy": 1, "warning": 5, "critical": 10 }
   },
   "commands": {
-    "test": "npm test",
-    "test_unit": "npm run test:unit",
-    "test_integration": "npm run test:integration",
-    "coverage": "npm test -- --coverage"
+    "test": "<framework-specific>",
+    "test_unit": "<framework-specific>",
+    "test_integration": "<framework-specific>",
+    "coverage": "<framework-specific>"
   }
 }
+```
+
+**Framework-specific commands:**
+
+| Framework | test | test_unit | coverage |
+|-----------|------|-----------|----------|
+| Jest/Vitest | `npm test` | `npm run test:unit` | `npm test -- --coverage` |
+| pytest | `pytest` | `pytest tests/unit` | `pytest --cov=src` |
+| RSpec | `bundle exec rspec` | `bundle exec rspec spec/unit` | `bundle exec rspec --format documentation` |
+| Go | `go test ./...` | `go test ./internal/...` | `go test -cover ./...` |
+| Cargo | `cargo test` | `cargo test --lib` | `cargo tarpaulin` |
+| Bash | `./scripts/tests/run_tests.sh` | (custom) | (N/A) |
 ```
 
 Adjust targets based on project type:

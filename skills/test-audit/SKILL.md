@@ -693,18 +693,40 @@ echo "Source lines: $(find src -name '*.ts' -exec wc -l {} + | tail -1)"
 
 ### 0. Run Tests & Capture Metrics
 
-Before auditing code quality, run the test suite and capture metrics:
+Before auditing code quality, run the test suite and capture metrics.
 
-**Check for metrics config:**
+**Step 1: Detect test command**
+
+Check for config first, then detect project type:
 ```bash
-# Look for metrics config created by /test-setup
-cat .test-metrics.json 2>/dev/null
+# Option A: Read from .test-metrics.json (created by /test-setup)
+if [ -f .test-metrics.json ]; then
+  TEST_CMD=$(jq -r '.commands.test' .test-metrics.json)
+fi
+
+# Option B: Detect project type
+if [ -z "$TEST_CMD" ]; then
+  if [ -f package.json ]; then
+    TEST_CMD="npm test"
+  elif [ -f pytest.ini ] || [ -f pyproject.toml ]; then
+    TEST_CMD="pytest"
+  elif [ -f Gemfile ]; then
+    TEST_CMD="bundle exec rspec"
+  elif [ -f go.mod ]; then
+    TEST_CMD="go test ./..."
+  elif [ -f Cargo.toml ]; then
+    TEST_CMD="cargo test"
+  else
+    # Ask user
+    TEST_CMD="<ask user>"
+  fi
+fi
 ```
 
-**Run tests and capture:**
+**Step 2: Run tests and capture output**
 ```bash
-# Time the test run
-time npm test 2>&1 | tee test-output.txt
+# Time the test run with detected command
+time $TEST_CMD 2>&1 | tee test-output.txt
 
 # Extract key metrics:
 # - Total tests, passed, failed, skipped
