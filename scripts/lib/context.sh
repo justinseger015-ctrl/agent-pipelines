@@ -104,6 +104,9 @@ generate_context() {
     pipeline=$(jq -r '.pipeline // .type // ""' "$run_dir/state.json" 2>/dev/null)
   fi
 
+  # Extract commands from stage config (for test, build, lint, etc.)
+  local commands_json=$(echo "$stage_config" | jq '.commands // {}')
+
   # Generate context.json
   jq -n \
     --arg session "$session" \
@@ -120,6 +123,7 @@ generate_context() {
     --argjson inputs "$inputs_json" \
     --argjson max_iterations "$max_iterations" \
     --argjson remaining "$remaining_seconds" \
+    --argjson commands "$commands_json" \
     '{
       session: $session,
       pipeline: $pipeline,
@@ -136,7 +140,8 @@ generate_context() {
       limits: {
         max_iterations: $max_iterations,
         remaining_seconds: $remaining
-      }
+      },
+      commands: $commands
     }' > "$iter_dir/context.json"
 
   echo "$iter_dir/context.json"
