@@ -94,6 +94,20 @@ Each provider runs in isolation with its own progress file, so they don't influe
 
 Ralph loops can do more than implement tasks. Try them for plan refinement, bug review, research iteration, or codebase exploration. Anywhere multiple passes improve quality, loops help.
 
+## Getting Started
+
+```bash
+claude plugin marketplace add https://github.com/hwells4/agent-pipelines
+claude plugin install agent-pipelines@dodo-digital
+```
+
+Then in Claude Code:
+1. `/sessions plan` - describe your feature, get a PRD and tasks
+2. `/refine` - iterate on the plan until two agents agree it's solid
+3. `/ralph` - implement the tasks until the queue is empty
+
+Pipelines run in tmux, so they keep going even if you close Claude Code.
+
 ---
 
 **Full reference:** [CLAUDE.md](CLAUDE.md)

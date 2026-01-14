@@ -89,6 +89,52 @@ A separate agent skill drives new tests from user interviews; those tests become
 * enforce drift rules via `/tdd-check`
 * publish overlays and behavior diffs as CI artifacts / PR annotations
 
+### Config (`.tdd-prose/config.yml`)
+
+Example:
+
+```yaml
+spec_output: spec/
+test_globs:
+  - "tests/**/*.py"
+exclude_globs:
+  - "**/fixtures/**"
+frameworks:
+  - name: pytest
+    collect_cmd: "pytest --collect-only --json-report"
+block_rules:
+  default: "{suite_path.0}"
+  overrides:
+    "Authentication/login": "auth.login"
+eligibility:
+  default: behavior
+  internal_patterns:
+    - "**/*_snapshot*"
+anchors:
+  tag: "@tdd-prose:behavior"
+  allow_multiple: false
+ci:
+  needs_review_max: 0
+  orphaned_max: 0
+render:
+  wrap_column: 88
+```
+
+Required fields:
+
+* `spec_output` target directory or file
+* `test_globs` for discovery
+* `frameworks[*].collect_cmd` for runner metadata
+
+Optional fields (deterministic defaults if omitted):
+
+* `exclude_globs` to ignore fixtures/helpers
+* `block_rules` overrides for block_id mapping
+* `eligibility.internal_patterns` for known internal-only tests
+* `anchors` syntax per language
+* `ci` thresholds for `needs_review`/`orphaned`
+* `render.wrap_column` for stable formatting
+
 ---
 
 ## 6. Architecture
@@ -151,6 +197,7 @@ Notes:
 
 * `anchors.behavior_id` is optional but strongly recommended for stability.
 * `assertions` records “kind + matcher + trivially extractable literals.” Anything non-trivial becomes a hashed structural summary.
+* `status` captures skip/xfail; skipped tests never count as evidence but appear in coverage diagnostics.
 
 ### 7.2 BehaviorGraph (behavior ledger IR)
 
@@ -420,6 +467,19 @@ Optional local model classifier can refine borderline cases, but cannot override
 
 Exit condition: no-op run produces zero spec diffs.
 
+### 10.6 Failure handling and edge cases
+
+Deterministic rules when inputs are messy:
+
+* syntax errors or unsupported test files → mark `parse_error`, keep last-known behaviors, fail `/tdd-check` in CI
+* runner vs AST mismatch → mark `needs_review` with diagnostics; keep AST locators but runner names
+* parameterized tests → each case becomes evidence entry; shared anchor applies to all cases
+* skipped/xfail → excluded from evidence but reported as inactive coverage
+* dynamic test names → fall back to runner-collected name and hash suffix; mark `needs_review`
+* multiple anchors on a test → shared evidence with reduced weight; error if anchors map to conflicting blocks
+* duplicate `test_id` → require explicit anchor or snapshot alias; otherwise fail `/tdd-check`
+* deleted tests → behaviors become `orphaned`, never auto-removed
+
 ---
 
 ## 11. Drift checks and coverage
@@ -453,6 +513,12 @@ Outputs:
 
 * human readable
 * JSON for PR annotations/dashboards
+
+### 11.3 Diagnostics artifacts
+
+* `.tdd-prose/reports/diagnostics.json` with parse errors, mismatches, skipped/xfail inventory
+* `.tdd-prose/reports/behavior-diff.json` for stable machine-readable diffs
+* severity mapping (`info`/`warn`/`error`) with deterministic exit codes
 
 ---
 
@@ -801,6 +867,7 @@ This enables:
 * allowlist paths for any model context
 * redact secrets before any model input
 * treat repo content as untrusted input (prompt injection hardening)
+* `--no-runner` mode for untrusted repos; runner collection uses a scrubbed env and no network
 * schema-validated model outputs only
 * no network exfiltration by default
 
@@ -898,3 +965,12 @@ Exit criteria:
 * Mapping snapshot is the team-scale determinism lever; local sqlite is only cache.
 * Runtime truth is an overlay artifact, never committed prose.
 * Agent skill writes tests, not specs; compiler writes specs, not tests.
+
+---
+
+## 19. Validation strategy
+
+* unit tests for adapters, mapping, and renderer (golden spec fixtures)
+* integration fixtures per framework (pytest, jest/vitest) with deterministic outputs
+* regression fixtures for mapping snapshot migrations and alias handling
+* CLI smoke tests for `sync`, `check`, `coverage`, `report` in CI
