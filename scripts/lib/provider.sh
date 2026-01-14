@@ -121,17 +121,17 @@ execute_codex() {
   # Use pipefail to capture exit code through pipe
   set -o pipefail
   if [ -n "$output_file" ]; then
-    codex exec \
+    printf '%s' "$prompt" | codex exec \
       --dangerously-bypass-approvals-and-sandbox \
       -m "$model" \
       -c "model_reasoning_effort=\"$reasoning\"" \
-      "$prompt" 2>&1 | tee "$output_file"
+      2>&1 | tee "$output_file"
   else
-    codex exec \
+    printf '%s' "$prompt" | codex exec \
       --dangerously-bypass-approvals-and-sandbox \
       -m "$model" \
       -c "model_reasoning_effort=\"$reasoning\"" \
-      "$prompt" 2>&1
+      2>&1
   fi
   local exit_code=$?
   set +o pipefail

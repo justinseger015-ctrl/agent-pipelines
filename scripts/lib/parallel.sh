@@ -33,8 +33,8 @@ run_parallel_provider() {
 
   local stage_count=$(echo "$stages_json" | jq 'length')
   # Provider-aware model default: opus for Claude, gpt-5.2-codex for Codex
-  local provider_default=$(get_default_model "$provider")
-  local default_model=$(echo "$defaults_json" | jq -r ".model // \"$provider_default\"")
+  # Use provider's default model - pipeline-level defaults don't override per-provider
+  local default_model=$(get_default_model "$provider")
 
   for stage_idx in $(seq 0 $((stage_count - 1))); do
     local stage_config=$(echo "$stages_json" | jq ".[$stage_idx]")
@@ -294,32 +294,51 @@ run_parallel_block() {
   echo "└──────────────────────────────────────────────────────────────"
   echo ""
 
-  # Track provider PIDs for parallel execution
-  declare -A provider_pids
+  # Track provider PIDs for parallel execution (bash 3.x compatible)
+  local all_pids=""
   local any_failed=false
 
   # Spawn subshell for each provider
   for provider in $providers; do
     (
-      # Export necessary functions and vars for subshell
+      # Export necessary vars for subshell
       export MOCK_MODE MOCK_FIXTURES_DIR STAGES_DIR LIB_DIR PROJECT_ROOT
+
+      # Re-source libraries in subshell (functions don't inherit)
+      source "$LIB_DIR/yaml.sh"
+      source "$LIB_DIR/state.sh"
+      source "$LIB_DIR/progress.sh"
+      source "$LIB_DIR/resolve.sh"
+      source "$LIB_DIR/context.sh"
+      source "$LIB_DIR/status.sh"
+      source "$LIB_DIR/provider.sh"
+      source "$LIB_DIR/stage.sh"
+      [ "$MOCK_MODE" = true ] && [ -f "$LIB_DIR/mock.sh" ] && source "$LIB_DIR/mock.sh"
+
       # Run provider stages sequentially
       run_parallel_provider "$provider" "$block_dir" "$stages_json" "$session" "$defaults"
     ) &
-    provider_pids[$provider]=$!
-    echo "  Started $provider (PID ${provider_pids[$provider]})"
+    local pid=$!
+    all_pids="$all_pids $pid"
+    echo "  Started $provider (PID $pid)"
   done
 
-  # Wait for all providers
+  # Wait for all PIDs and check provider states
   local failed_providers=""
+  for pid in $all_pids; do
+    wait "$pid" || any_failed=true
+  done
+
+  # Check which providers succeeded/failed by reading their state files
   for provider in $providers; do
-    local pid=${provider_pids[$provider]}
-    if ! wait "$pid"; then
-      any_failed=true
-      failed_providers="$failed_providers $provider"
-      echo "  ✗ $provider failed"
-    else
+    local provider_state="$block_dir/providers/$provider/state.json"
+    local status=$(jq -r '.status // "unknown"' "$provider_state" 2>/dev/null)
+    if [ "$status" = "complete" ]; then
       echo "  ✓ $provider complete"
+    else
+      echo "  ✗ $provider failed"
+      failed_providers="$failed_providers $provider"
+      any_failed=true
     fi
   done
 
@@ -428,15 +447,26 @@ run_parallel_block_resume() {
 
   echo ""
 
-  # Track provider PIDs for parallel execution
-  declare -A provider_pids
+  # Track provider PIDs for parallel execution (bash 3.x compatible)
+  local all_pids=""
   local any_failed=false
 
   # Spawn subshell for each provider that needs to run
   for provider in $providers_to_run; do
     (
-      # Export necessary functions and vars for subshell
+      # Export necessary vars for subshell
       export MOCK_MODE MOCK_FIXTURES_DIR STAGES_DIR LIB_DIR PROJECT_ROOT
+
+      # Re-source libraries in subshell (functions don't inherit)
+      source "$LIB_DIR/yaml.sh"
+      source "$LIB_DIR/state.sh"
+      source "$LIB_DIR/progress.sh"
+      source "$LIB_DIR/resolve.sh"
+      source "$LIB_DIR/context.sh"
+      source "$LIB_DIR/status.sh"
+      source "$LIB_DIR/provider.sh"
+      source "$LIB_DIR/stage.sh"
+      [ "$MOCK_MODE" = true ] && [ -f "$LIB_DIR/mock.sh" ] && source "$LIB_DIR/mock.sh"
 
       # Initialize provider state if needed
       if [ ! -f "$block_dir/providers/$provider/state.json" ]; then
@@ -448,20 +478,27 @@ run_parallel_block_resume() {
       # Run provider stages sequentially
       run_parallel_provider "$provider" "$block_dir" "$stages_json" "$session" "$defaults"
     ) &
-    provider_pids[$provider]=$!
-    echo "  Started $provider (PID ${provider_pids[$provider]})"
+    local pid=$!
+    all_pids="$all_pids $pid"
+    echo "  Started $provider (PID $pid)"
   done
 
-  # Wait for all resumed providers
+  # Wait for all PIDs and check provider states
   local failed_providers=""
+  for pid in $all_pids; do
+    wait "$pid" || any_failed=true
+  done
+
+  # Check which providers succeeded/failed
   for provider in $providers_to_run; do
-    local pid=${provider_pids[$provider]}
-    if ! wait "$pid"; then
-      any_failed=true
-      failed_providers="$failed_providers $provider"
-      echo "  ✗ $provider failed"
-    else
+    local provider_state="$block_dir/providers/$provider/state.json"
+    local status=$(jq -r '.status // "unknown"' "$provider_state" 2>/dev/null)
+    if [ "$status" = "complete" ]; then
       echo "  ✓ $provider complete"
+    else
+      echo "  ✗ $provider failed"
+      failed_providers="$failed_providers $provider"
+      any_failed=true
     fi
   done
 
